@@ -1,0 +1,61 @@
+# This .gitignore file is based on the standard Visual Studio .gitignore template
+# and adapted for ASP.NET Core projects.
+
+## Ignore Visual Studio files and folders
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+## Ignore build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+
+## Ignore packages
+*.nupkg
+*.snupkg
+
+# The packages folder can be ignored because NuGet will restore them
+# on build. However, if you're using a package management solution that
+# commits packages to source control, you might want to remove this line.
+packages/
+
+## Ignore Visual Studio Code files
+.vscode/
+
+## Ignore Rider files
+.idea/
+
+## Ignore resharper files
+*.DotSettings
+*.DotSettings.user
+
+## Ignore test results
+TestResults/
+
+## Ignore deployment files
+*.publishsettings
+
+## Ignore log files
+*.log
+
+## Ignore database files
+*.mdf
+*.ldf
+*.sdf
+
+## Ignore user secrets
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+appsettings.json.user
+
+## Ignore generated files
+*.min.js
+*.min.css
+
+## Ignore node_modules (if using frontend frameworks like Angular/React/Vue)
+node_modules/

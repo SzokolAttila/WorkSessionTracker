@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorkSessionTrackerAPI", "WorkSessionTrackerAPI\WorkSessionTrackerAPI.csproj", "{7C617C8B-57F2-D600-29C6-FE15E8E5E3DD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7C617C8B-57F2-D600-29C6-FE15E8E5E3DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C617C8B-57F2-D600-29C6-FE15E8E5E3DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C617C8B-57F2-D600-29C6-FE15E8E5E3DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C617C8B-57F2-D600-29C6-FE15E8E5E3DD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {8B026CC5-C868-45B9-AD8B-05B2F3ED4A97}
+	EndGlobalSection
+EndGlobal
