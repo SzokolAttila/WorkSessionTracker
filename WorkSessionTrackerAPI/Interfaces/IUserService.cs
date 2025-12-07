@@ -13,5 +13,6 @@ namespace WorkSessionTrackerAPI.Interfaces
         Task<bool> ConnectEmployeeToSupervisorAsync(ConnectEmployeeToSupervisorDto dto);
         Task<bool> ResendEmailVerificationAsync(int userId);
         Task<Supervisor?> GetSupervisorWithEmployeesAsync(int supervisorId);
+        Task<string?> LoginAsync(LoginDto dto); // Returns JWT token on success
     }
 }

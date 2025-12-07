@@ -7,6 +7,9 @@ using BCrypt.Net;
 using OtpNet;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
 using WorkSessionTrackerAPI.Data; // Added for ApplicationDbContext injection
 
 namespace WorkSessionTrackerAPI.Services
@@ -16,12 +19,14 @@ namespace WorkSessionTrackerAPI.Services
         private readonly IUserRepository _userRepository;
         private readonly IEmailService _emailService;
         private readonly ApplicationDbContext _context; // Inject DbContext directly for specific queries like Include
+        private readonly IConfiguration _configuration; // Inject IConfiguration to access appsettings
 
-        public UserService(IUserRepository userRepository, IEmailService emailService, ApplicationDbContext context)
+        public UserService(IUserRepository userRepository, IEmailService emailService, ApplicationDbContext context, IConfiguration configuration)
         {
             _userRepository = userRepository;
             _emailService = emailService;
             _context = context;
+            _configuration = configuration;
         }
 
         public async Task<Employee?> RegisterEmployeeAsync(RegisterUserDto dto)
@@ -113,9 +118,9 @@ namespace WorkSessionTrackerAPI.Services
                 return null;
             }
 
-            // In a real application, you'd generate a QR code URI here.
-            // Example: otpauth://totp/WorkSessionTracker:{supervisor.Email}?secret={supervisor.TotpSeed}&issuer=WorkSessionTracker
-            return $"TOTP Secret for {supervisor.Email}: {supervisor.TotpSeed}";
+            // Compute the current 6-digit TOTP code using the stored TotpSeed
+            var totp = new Totp(Base32Encoding.ToBytes(supervisor.TotpSeed));
+            return totp.ComputeTotp();
         }
 
         public async Task<bool> ConnectEmployeeToSupervisorAsync(ConnectEmployeeToSupervisorDto dto)
@@ -143,8 +148,48 @@ namespace WorkSessionTrackerAPI.Services
         public async Task<Supervisor?> GetSupervisorWithEmployeesAsync(int supervisorId)
         {
             return await _context.Supervisors
-                                 .Include(s => s.Employees)
-                                 .FirstOrDefaultAsync(s => s.Id == supervisorId);
+                .Include(s => s.Employees)
+                .FirstOrDefaultAsync(s => s.Id == supervisorId);
+        }
+
+        public async Task<string?> LoginAsync(LoginDto dto)
+        {
+            var user = await _userRepository.GetUserByEmailAsync(dto.Email);
+
+            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            {
+                return null; // Invalid credentials
+            }
+
+            if (!user.EmailVerified)
+            {
+                // Optionally, you might want to return a specific error or trigger resend
+                return null; // Email not verified
+            }
+
+            // User authenticated, generate JWT token
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured.")));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Role, user.GetType().Name) // "Employee" or "Supervisor"
+            };
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddDays(7), // Token valid for 7 days
+                SigningCredentials = creds,
+                Issuer = _configuration["Jwt:Issuer"],
+                Audience = _configuration["Jwt:Audience"]
+            };
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
         }
     }
 }

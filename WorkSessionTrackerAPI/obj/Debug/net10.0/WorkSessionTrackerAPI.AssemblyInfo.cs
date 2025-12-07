@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WorkSessionTrackerAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+af5c5eb0989e4eb60458d1aed16e5bc53c256bf7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6965c3141caa07421d9ee3a4e2acf0c5f9f3e8b4")]
 [assembly: System.Reflection.AssemblyProductAttribute("WorkSessionTrackerAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WorkSessionTrackerAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

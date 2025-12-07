@@ -22,7 +22,7 @@ namespace WorkSessionTrackerAPI.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("WorkSessionTrackerAPI.Models.Employee", b =>
+            modelBuilder.Entity("WorkSessionTrackerAPI.Models.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -50,53 +50,42 @@ namespace WorkSessionTrackerAPI.Migrations
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserType")
+                        .IsRequired()
+                        .HasMaxLength(13)
+                        .HasColumnType("nvarchar(13)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Users", (string)null);
+
+                    b.HasDiscriminator<string>("UserType").HasValue("User");
+
+                    b.UseTphMappingStrategy();
+                });
+
+            modelBuilder.Entity("WorkSessionTrackerAPI.Models.Employee", b =>
+                {
+                    b.HasBaseType("WorkSessionTrackerAPI.Models.User");
 
                     b.Property<int?>("SupervisorId")
                         .HasColumnType("int");
 
-                    b.HasKey("Id");
-
                     b.HasIndex("SupervisorId");
 
-                    b.ToTable("Employees");
+                    b.HasDiscriminator().HasValue("Employee");
                 });
 
             modelBuilder.Entity("WorkSessionTrackerAPI.Models.Supervisor", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("EmailVerificationToken")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("EmailVerificationTokenExpiration")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("EmailVerified")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.HasBaseType("WorkSessionTrackerAPI.Models.User");
 
                     b.Property<string>("TotpSeed")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("Id");
-
-                    b.ToTable("Supervisors");
+                    b.HasDiscriminator().HasValue("Supervisor");
                 });
 
             modelBuilder.Entity("WorkSessionTrackerAPI.Models.Employee", b =>

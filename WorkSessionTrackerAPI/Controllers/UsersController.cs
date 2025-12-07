@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using WorkSessionTrackerAPI.DTOs;
 using WorkSessionTrackerAPI.Interfaces;
+using Microsoft.AspNetCore.Authorization; // Add this using statement
+using System.Security.Claims; // Add this using statement for ClaimTypes
 using System.Threading.Tasks;
 
 namespace WorkSessionTrackerAPI.Controllers
@@ -60,21 +62,58 @@ namespace WorkSessionTrackerAPI.Controllers
             return Ok("Email verification link resent.");
         }
 
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginDto dto)
+        {
+            var token = await _userService.LoginAsync(dto);
+            if (token == null)
+            {
+                return Unauthorized("Invalid credentials or unverified email.");
+            }
+            return Ok(new { Token = token });
+        }
+
+        [Authorize] // Requires authentication
         [HttpGet("supervisor/{supervisorId}/totp-setup")]
         public async Task<IActionResult> GetTotpSetupCode(int supervisorId)
         {
+            // Get the ID of the authenticated user
+            var authenticatedUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (authenticatedUserIdClaim == null || !int.TryParse(authenticatedUserIdClaim.Value, out int authenticatedUserId))
+            {
+                return Unauthorized("User ID not found in token.");
+            }
+            // Ensure the authenticated user is trying to access their own data
+            if (authenticatedUserId != supervisorId)
+            {
+                return Forbid("You are not authorized to access this supervisor's TOTP setup.");
+            }
+
             var setupCode = await _userService.GenerateTotpSetupCodeAsync(supervisorId);
             if (setupCode == null)
             {
                 return NotFound("Supervisor not found or TOTP not configured.");
             }
-            // In a real app, you'd return a QR code image or URI
-            return Ok(new { TotpSetupInfo = setupCode });
+            // Return the current 6-digit TOTP code
+            return Ok(new { TotpCode = setupCode });
         }
 
+        [Authorize] // Requires authentication
         [HttpPost("connect-employee-to-supervisor")]
         public async Task<IActionResult> ConnectEmployeeToSupervisor([FromBody] ConnectEmployeeToSupervisorDto dto)
         {
+            // Get the ID of the authenticated user
+            var authenticatedUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (authenticatedUserIdClaim == null || !int.TryParse(authenticatedUserIdClaim.Value, out int authenticatedUserId))
+            {
+                return Unauthorized("User ID not found in token.");
+            }
+            // Ensure the authenticated user is trying to connect themselves
+            if (authenticatedUserId != dto.EmployeeId)
+            {
+                return Forbid("You are not authorized to connect another employee to a supervisor.");
+            }
+
             var result = await _userService.ConnectEmployeeToSupervisorAsync(dto);
             if (!result)
             {
@@ -83,9 +122,22 @@ namespace WorkSessionTrackerAPI.Controllers
             return Ok("Employee successfully connected to supervisor.");
         }
 
+        [Authorize] // Requires authentication
         [HttpGet("supervisor/{supervisorId}/with-employees")]
         public async Task<IActionResult> GetSupervisorWithEmployees(int supervisorId)
         {
+            // Get the ID of the authenticated user
+            var authenticatedUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (authenticatedUserIdClaim == null || !int.TryParse(authenticatedUserIdClaim.Value, out int authenticatedUserId))
+            {
+                return Unauthorized("User ID not found in token.");
+            }
+            // Ensure the authenticated user is trying to access their own data
+            if (authenticatedUserId != supervisorId)
+            {
+                return Forbid("You are not authorized to view this supervisor's employees.");
+            }
+
             var supervisor = await _userService.GetSupervisorWithEmployeesAsync(supervisorId);
             if (supervisor == null) return NotFound("Supervisor not found.");
             return Ok(supervisor);

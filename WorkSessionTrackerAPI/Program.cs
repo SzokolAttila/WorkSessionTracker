@@ -1,10 +1,14 @@
 
 using Microsoft.EntityFrameworkCore;
 using WorkSessionTrackerAPI.Data;
-using WorkSessionTrackerAPI.DTOs; // Added for clarity, though not strictly needed here
 using WorkSessionTrackerAPI.Interfaces;
 using WorkSessionTrackerAPI.Services;
 using WorkSessionTrackerAPI.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using WorkSessionTrackerAPI.DTOs; // Keep this if DTOs are used directly in Program.cs, otherwise remove.
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,10 +25,29 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Register Repositories
 // Register Services
 builder.Services.AddScoped<IUserRepository, UserRepository>(); // Already present, ensure it's here
-builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IEmailService, EmailService>(); // Already present
+builder.Services.AddScoped<IUserService, UserService>(); // Already present
+
+// Configure JWT Authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured.")))
+        };
+    });
+
+builder.Services.AddAuthorization(); // Add authorization services
 
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -37,6 +60,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication(); // Must be before UseAuthorization
+app.UseAuthorization();  // Must be after UseAuthentication
 app.MapControllers(); // Map controller routes
 
 app.Run();
