@@ -1,3 +1,7 @@
+
+using Microsoft.EntityFrameworkCore;
+using WorkSessionTrackerAPI.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -5,6 +9,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer(); // Required for Swashbuckle to discover endpoints
 builder.Services.AddSwaggerGen(); // Adds Swagger generation services
 
+// Configure DbContext with SQL Server
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 var app = builder.Build();
 
