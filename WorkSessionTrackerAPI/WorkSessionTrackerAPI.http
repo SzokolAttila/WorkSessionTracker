@@ -1,0 +1,6 @@
+@WorkSessionTrackerAPI_HostAddress = http://localhost:5177
+
+GET {{WorkSessionTrackerAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
