@@ -12,6 +12,7 @@ namespace WorkSessionTrackerAPI.Data
 
         public DbSet<Employee> Employees { get; set; }
         public DbSet<Supervisor> Supervisors { get; set; }
+        public DbSet<WorkSession> WorkSessions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

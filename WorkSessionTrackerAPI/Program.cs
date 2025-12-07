@@ -25,8 +25,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Register Repositories
 // Register Services
 builder.Services.AddScoped<IUserRepository, UserRepository>(); // Already present, ensure it's here
+builder.Services.AddScoped<IWorkSessionRepository, WorkSessionRepository>();
 builder.Services.AddScoped<IEmailService, EmailService>(); // Already present
 builder.Services.AddScoped<IUserService, UserService>(); // Already present
+builder.Services.AddScoped<IWorkSessionService, WorkSessionService>();
 
 // Configure JWT Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
