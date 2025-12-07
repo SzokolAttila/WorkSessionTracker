@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using WorkSessionTrackerAPI.Models; // Add this using statement
 
 namespace WorkSessionTrackerAPI.Data
 {
@@ -8,5 +9,8 @@ namespace WorkSessionTrackerAPI.Data
             : base(options)
         {
         }
+
+        public DbSet<Employee> Employees { get; set; }
+        public DbSet<Supervisor> Supervisors { get; set; }
     }
 }
