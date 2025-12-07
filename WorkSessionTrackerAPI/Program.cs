@@ -7,7 +7,6 @@ using WorkSessionTrackerAPI.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using WorkSessionTrackerAPI.DTOs; // Keep this if DTOs are used directly in Program.cs, otherwise remove.
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,10 +23,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Register Repositories
 // Register Services
-builder.Services.AddScoped<IUserRepository, UserRepository>(); // Already present, ensure it's here
+builder.Services.AddScoped<IUserRepository, UserRepository>(); 
 builder.Services.AddScoped<IWorkSessionRepository, WorkSessionRepository>();
-builder.Services.AddScoped<IEmailService, EmailService>(); // Already present
-builder.Services.AddScoped<IUserService, UserService>(); // Already present
+builder.Services.AddScoped<IEmailService, EmailService>(); 
+builder.Services.AddScoped<IUserService, UserService>(); 
 builder.Services.AddScoped<IWorkSessionService, WorkSessionService>();
 
 // Configure JWT Authentication
@@ -56,8 +55,6 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger(); // Enables the Swagger middleware
     app.UseSwaggerUI(); // Enables the Swagger UI middleware
-    // You can optionally configure the Swagger UI endpoint, e.g., app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1"));
-    // If you were using app.MapOpenApi(), you would remove it here.
 }
 
 app.UseHttpsRedirection();

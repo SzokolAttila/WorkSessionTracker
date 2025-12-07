@@ -38,12 +38,6 @@ namespace WorkSessionTrackerAPI.Services
             return await _workSessionRepository.GetWorkSessionsByEmployeeIdAsync(employeeId);
         }
 
-        public async Task<WorkSession?> GetWorkSessionByIdForAuthAsync(int workSessionId)
-        {
-            // This method is specifically for fetching a work session for authorization checks in the controller
-            return await _workSessionRepository.GetWorkSessionByIdWithEmployeeAsync(workSessionId);
-        }
-
         public async Task<WorkSession?> UpdateWorkSessionAsync(WorkSession existingWorkSession, UpdateWorkSessionDto dto) // Authorization is now in the controller
         {
             existingWorkSession.StartDateTime = dto.StartDateTime;

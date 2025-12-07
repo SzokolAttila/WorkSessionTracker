@@ -15,14 +15,16 @@ namespace WorkSessionTrackerAPI.Controllers
     public class WorkSessionsController : ControllerBase
     {
         private readonly IWorkSessionService _workSessionService;
-        private readonly IUserService _userService; // Added to check supervisor authorization
-        private readonly IUserRepository _userRepository;
+        private readonly IUserService _userService;
+        private readonly IUserRepository _userRepository; // Needed for supervisor authorization checks
+        private readonly IWorkSessionRepository _workSessionRepository; // Added for direct GetByIdAsync calls
 
-        public WorkSessionsController(IWorkSessionService workSessionService, IUserService userService, IUserRepository userRepository)
+        public WorkSessionsController(IWorkSessionService workSessionService, IUserService userService, IUserRepository userRepository, IWorkSessionRepository workSessionRepository)
         {
             _workSessionService = workSessionService;
             _userService = userService;
             _userRepository = userRepository;
+            _workSessionRepository = workSessionRepository;
         }
 
         private int GetAuthenticatedUserId()
@@ -99,7 +101,7 @@ namespace WorkSessionTrackerAPI.Controllers
             var authenticatedUserRole = GetAuthenticatedUserRole();
 
             // Fetch the work session to check ownership
-            var workSession = await _workSessionService.GetWorkSessionByIdForAuthAsync(id);
+            var workSession = await _workSessionRepository.GetByIdAsync(id); // Directly use repository's GetByIdAsync
             if (workSession == null)
             {
                 return NotFound("Work session not found.");
@@ -126,7 +128,7 @@ namespace WorkSessionTrackerAPI.Controllers
             var authenticatedUserRole = GetAuthenticatedUserRole();
 
             // Fetch the work session to check ownership
-            var workSession = await _workSessionService.GetWorkSessionByIdForAuthAsync(id);
+            var workSession = await _workSessionRepository.GetByIdAsync(id); // Directly use repository's GetByIdAsync
             if (workSession == null)
             {
                 return NotFound("Work session not found.");
@@ -153,7 +155,7 @@ namespace WorkSessionTrackerAPI.Controllers
             var authenticatedUserRole = GetAuthenticatedUserRole();
 
             // Fetch the work session to check supervisor relationship
-            var workSession = await _workSessionService.GetWorkSessionByIdForAuthAsync(id);
+            var workSession = await _workSessionRepository.GetByIdAsync(id); // Directly use repository's GetByIdAsync
             if (workSession == null)
             {
                 return NotFound("Work session not found.");
