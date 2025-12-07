@@ -48,5 +48,15 @@ namespace WorkSessionTrackerAPI.Repositories
         {
             return await _context.Set<User>().FirstOrDefaultAsync(u => u.Email == email);
         }
+
+        public async Task<Employee?> GetEmployeeByIdAsync(int id)
+        {
+            return await _context.Set<User>().OfType<Employee>().FirstOrDefaultAsync(e => e.Id == id);
+        }
+
+        public async Task<Supervisor?> GetSupervisorByIdAsync(int id)
+        {
+            return await _context.Set<User>().OfType<Supervisor>().FirstOrDefaultAsync(s => s.Id == id);
+        }
     }
 }
