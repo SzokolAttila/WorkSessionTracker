@@ -47,7 +47,10 @@ namespace WorkSessionTrackerAPI.Repositories
 
         public async Task<IEnumerable<WorkSession>> GetWorkSessionsByEmployeeIdAsync(int employeeId)
         {
-            return await _context.WorkSessions.Where(ws => ws.EmployeeId == employeeId).ToListAsync();
+            return await _context.WorkSessions
+                .Where(ws => ws.EmployeeId == employeeId)
+                .Include(ws => ws.Comment) // Auto-include the Comment for each WorkSession
+                .ToListAsync();
         }
     }
 }

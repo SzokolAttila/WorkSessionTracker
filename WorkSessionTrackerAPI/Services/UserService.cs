@@ -149,6 +149,8 @@ namespace WorkSessionTrackerAPI.Services
         {
             return await _context.Supervisors
                 .Include(s => s.Employees)
+                    .ThenInclude(e => e.WorkSessions)
+                        .ThenInclude(w => w.Comment)
                 .FirstOrDefaultAsync(s => s.Id == supervisorId);
         }
 

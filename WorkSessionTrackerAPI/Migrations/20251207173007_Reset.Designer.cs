@@ -12,8 +12,8 @@ using WorkSessionTrackerAPI.Data;
 namespace WorkSessionTrackerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20251207134320_WorkSessions")]
-    partial class WorkSessions
+    [Migration("20251207173007_Reset")]
+    partial class Reset
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,37 @@ namespace WorkSessionTrackerAPI.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("WorkSessionTrackerAPI.Models.Comment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SupervisorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WorkSessionId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SupervisorId");
+
+                    b.HasIndex("WorkSessionId")
+                        .IsUnique();
+
+                    b.ToTable("Comments");
+                });
 
             modelBuilder.Entity("WorkSessionTrackerAPI.Models.User", b =>
                 {
@@ -121,6 +152,25 @@ namespace WorkSessionTrackerAPI.Migrations
                     b.HasDiscriminator().HasValue("Supervisor");
                 });
 
+            modelBuilder.Entity("WorkSessionTrackerAPI.Models.Comment", b =>
+                {
+                    b.HasOne("WorkSessionTrackerAPI.Models.Supervisor", "Supervisor")
+                        .WithMany("Comments")
+                        .HasForeignKey("SupervisorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("WorkSessionTrackerAPI.Models.WorkSession", "WorkSession")
+                        .WithOne("Comment")
+                        .HasForeignKey("WorkSessionTrackerAPI.Models.Comment", "WorkSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Supervisor");
+
+                    b.Navigation("WorkSession");
+                });
+
             modelBuilder.Entity("WorkSessionTrackerAPI.Models.WorkSession", b =>
                 {
                     b.HasOne("WorkSessionTrackerAPI.Models.Employee", "Employee")
@@ -141,6 +191,11 @@ namespace WorkSessionTrackerAPI.Migrations
                     b.Navigation("Supervisor");
                 });
 
+            modelBuilder.Entity("WorkSessionTrackerAPI.Models.WorkSession", b =>
+                {
+                    b.Navigation("Comment");
+                });
+
             modelBuilder.Entity("WorkSessionTrackerAPI.Models.Employee", b =>
                 {
                     b.Navigation("WorkSessions");
@@ -148,6 +203,8 @@ namespace WorkSessionTrackerAPI.Migrations
 
             modelBuilder.Entity("WorkSessionTrackerAPI.Models.Supervisor", b =>
                 {
+                    b.Navigation("Comments");
+
                     b.Navigation("Employees");
                 });
 #pragma warning restore 612, 618

@@ -11,32 +11,19 @@ namespace WorkSessionTrackerAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // All methods in this controller require authentication by default
-    public class WorkSessionsController : ControllerBase
+    [Authorize]
+    public class WorkSessionsController : BaseApiController // Inherit from BaseApiController
     {
         private readonly IWorkSessionService _workSessionService;
         private readonly IUserService _userService;
         private readonly IUserRepository _userRepository; // Needed for supervisor authorization checks
         private readonly IWorkSessionRepository _workSessionRepository; // Added for direct GetByIdAsync calls
-
-        public WorkSessionsController(IWorkSessionService workSessionService, IUserService userService, IUserRepository userRepository, IWorkSessionRepository workSessionRepository)
+        public WorkSessionsController(IWorkSessionService workSessionService, IUserService userService, IUserRepository userRepository, IWorkSessionRepository workSessionRepository) : base() // Call base constructor
         {
             _workSessionService = workSessionService;
             _userService = userService;
             _userRepository = userRepository;
             _workSessionRepository = workSessionRepository;
-        }
-
-        private int GetAuthenticatedUserId()
-        {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return int.Parse(userIdClaim ?? throw new UnauthorizedAccessException("User ID not found in token."));
-        }
-
-        private string GetAuthenticatedUserRole()
-        {
-            // Assuming the role claim is added during JWT generation in UserService.LoginAsync
-            return User.FindFirst(ClaimTypes.Role)?.Value ?? throw new UnauthorizedAccessException("User role not found in token.");
         }
 
         [HttpPost]

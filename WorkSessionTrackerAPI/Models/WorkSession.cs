@@ -23,5 +23,7 @@ namespace WorkSessionTrackerAPI.Models
         }
         [JsonIgnore]
         public Employee? Employee { get; set; } // Navigation property
+
+        public Comment? Comment { get; set; } // One-to-one navigation property
     }
 }
