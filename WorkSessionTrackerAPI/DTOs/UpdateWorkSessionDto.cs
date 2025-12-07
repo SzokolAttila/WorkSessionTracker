@@ -3,10 +3,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace WorkSessionTrackerAPI.DTOs
 {
+    using WorkSessionTrackerAPI.ValidationAttributes;
+
     public class UpdateWorkSessionDto
     {
         [Required] public DateTime StartDateTime { get; set; }
-        [Required] public DateTime EndDateTime { get; set; }
+        [Required, EndDateGreaterThanStartDate(nameof(StartDateTime))] public DateTime EndDateTime { get; set; }
         public string? Description { get; set; }
     }
 }
