@@ -1,6 +1,8 @@
 
 using Microsoft.EntityFrameworkCore;
 using WorkSessionTrackerAPI.Data;
+using WorkSessionTrackerAPI.Interfaces;
+using WorkSessionTrackerAPI.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,9 @@ builder.Services.AddSwaggerGen(); // Adds Swagger generation services
 // Configure DbContext with SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Register Repositories
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 var app = builder.Build();
 
