@@ -14,9 +14,19 @@ using Microsoft.AspNetCore.Authorization;
 using System.Text;
 using WorkSessionTrackerAPI.Extensions;
 using WorkSessionTrackerAPI.Models.Enums;
+using Serilog;
 
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
+Log.Information("Starting up the application");
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Replace the default logging with Serilog
+builder.Host.UseSerilog((context, configuration) =>
+    configuration.ReadFrom.Configuration(context.Configuration));
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -134,6 +144,9 @@ var app = builder.Build();
 // Register the custom exception handling middleware at the top of the pipeline.
 app.UseExceptionMiddleware();
 
+// Add Serilog request logging. This will log every incoming HTTP request.
+app.UseSerilogRequestLogging();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -151,4 +164,15 @@ app.UseAuthentication(); // Must be before UseAuthorization
 app.UseAuthorization();  // Must be after UseAuthentication
 app.MapControllers(); // Map controller routes
 
-app.Run();
+try
+{
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

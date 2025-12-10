@@ -8,6 +8,7 @@ using System.Text;
 using WorkSessionTrackerAPI.DTOs;
 using WorkSessionTrackerAPI.Models;
 using WorkSessionTrackerAPI.Interfaces; // For IEmailService
+using Microsoft.Extensions.Logging;
 using WorkSessionTrackerAPI.Models.Enums;
 
 namespace WorkSessionTrackerAPI.Controllers
@@ -20,17 +21,20 @@ namespace WorkSessionTrackerAPI.Controllers
         private readonly SignInManager<User> _signInManager;
         private readonly IConfiguration _configuration;
         private readonly IEmailService _emailService; // Assuming you have an email service for sending confirmation emails
+        private readonly ILogger<AuthController> _logger;
 
         public AuthController(
             UserManager<User> userManager,
             SignInManager<User> signInManager,
             IConfiguration configuration,
-            IEmailService emailService)
+            IEmailService emailService,
+            ILogger<AuthController> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _configuration = configuration;
             _emailService = emailService;
+            _logger = logger;
         }
 
         private bool IsCompany(string role) => string.Equals(role, UserRoleEnum.Company.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -38,8 +42,10 @@ namespace WorkSessionTrackerAPI.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto model)
         {
+            _logger.LogInformation("Registration attempt for email {Email}", model.Email);
             if (!ModelState.IsValid)
             {
+                _logger.LogWarning("Registration failed for email {Email} due to invalid model state.", model.Email);
                 return BadRequest(ModelState);
             }
 
@@ -60,6 +66,7 @@ namespace WorkSessionTrackerAPI.Controllers
             }
             else
             {
+                _logger.LogWarning("Registration failed for email {Email}. Invalid role '{Role}' specified.", model.Email, model.Role);
                 return BadRequest("Invalid role specified. Must be 'Student' or 'Company'.");
             }
 
@@ -78,9 +85,11 @@ namespace WorkSessionTrackerAPI.Controllers
                 await _emailService.SendEmailAsync(user.Email, "Confirm your email",
                     $"Please confirm your account by clicking this link: <a href='{confirmationLink}'>link</a>");
 
+                _logger.LogInformation("User {Email} registered successfully as role {Role}. Awaiting email confirmation.", user.Email, role);
                 return Ok(new { Message = "User registered successfully. Please confirm your email." });
             }
 
+            _logger.LogWarning("User registration failed for {Email}. Errors: {Errors}", model.Email, result.Errors);
             return BadRequest(result.Errors);
         }
 
@@ -88,37 +97,45 @@ namespace WorkSessionTrackerAPI.Controllers
         [HttpGet("confirm-email")]
         public async Task<IActionResult> ConfirmEmail(int userId, string token)
         {
+            _logger.LogInformation("Email confirmation attempt for User ID {UserId}", userId);
             if (userId == 0 || string.IsNullOrWhiteSpace(token))
             {
+                _logger.LogWarning("Email confirmation failed due to invalid request parameters for User ID {UserId}", userId);
                 return BadRequest("Invalid email confirmation request.");
             }
 
             var user = await _userManager.FindByIdAsync(userId.ToString());
             if (user == null)
             {
+                _logger.LogWarning("Email confirmation failed. User not found for User ID {UserId}", userId);
                 return NotFound("User not found.");
             }
 
             var result = await _userManager.ConfirmEmailAsync(user, token);
             if (result.Succeeded)
             {
+                _logger.LogInformation("Email confirmed successfully for User {Email} (ID: {UserId})", user.Email, userId);
                 return Ok("Email confirmed successfully. You can now log in.");
             }
 
+            _logger.LogWarning("Email confirmation failed for User {Email} (ID: {UserId}). Errors: {Errors}", user.Email, userId, result.Errors);
             return BadRequest("Error confirming your email.");
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequestDto model)
         {
+            _logger.LogInformation("Login attempt for user {Email}", model.Email);
             if (!ModelState.IsValid)
             {
+                _logger.LogWarning("Login failed for {Email} due to invalid model state.", model.Email);
                 return BadRequest(ModelState);
             }
 
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
             {
+                _logger.LogWarning("Login failed for {Email}. User not found.", model.Email);
                 return Unauthorized("Invalid credentials.");
             }
 
@@ -128,18 +145,22 @@ namespace WorkSessionTrackerAPI.Controllers
 
             if (result.Succeeded)
             {
+                _logger.LogInformation("User {Email} logged in successfully.", model.Email);
                 var token = await GenerateJwtToken(user);
                 return Ok(new { Token = token });
             }
             if (result.IsLockedOut)
             {
+                _logger.LogWarning("User {Email} account is locked out.", model.Email);
                 return Unauthorized("Account locked out.");
             }
             if (result.IsNotAllowed)
             {
+                _logger.LogWarning("User {Email} is not allowed to sign in. Email may not be confirmed.", model.Email);
                 return Unauthorized("Account not allowed to sign in. Please confirm your email.");
             }
 
+            _logger.LogWarning("Login failed for {Email} due to invalid credentials.", model.Email);
             return Unauthorized("Invalid credentials.");
         }
 
