@@ -33,6 +33,8 @@ namespace WorkSessionTrackerAPI.Controllers
             _emailService = emailService;
         }
 
+        private bool IsCompany(string role) => string.Equals(role, UserRoleEnum.Company.ToString(), StringComparison.OrdinalIgnoreCase);
+        private bool IsStudent(string role) => string.Equals(role, UserRoleEnum.Student.ToString(), StringComparison.OrdinalIgnoreCase);
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto model)
         {
@@ -46,12 +48,12 @@ namespace WorkSessionTrackerAPI.Controllers
             User user;
             string role;
 
-            if (string.Equals(model.Role, UserRoleEnum.Company.ToString(), StringComparison.OrdinalIgnoreCase))
+            if (IsCompany(model.Role))
             {
                 user = new Company();
                 role = UserRoleEnum.Company.ToString();
             }
-            else if (string.Equals(model.Role, UserRoleEnum.Student.ToString(), StringComparison.OrdinalIgnoreCase))
+            else if (IsStudent(model.Role))
             {
                 user = new Student();
                 role = UserRoleEnum.Student.ToString();
