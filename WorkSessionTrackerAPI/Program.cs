@@ -4,6 +4,8 @@ using WorkSessionTrackerAPI.Data;
 using WorkSessionTrackerAPI.Interfaces;
 using WorkSessionTrackerAPI.Services;
 using WorkSessionTrackerAPI.Repositories;
+using Microsoft.AspNetCore.Identity; // Add this using statement
+using WorkSessionTrackerAPI.Models; // Add this using statement for your User model
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -21,18 +23,52 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Configure ASP.NET Identity
+builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
+    {
+        // Password settings
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequiredLength = 8;
+        options.Password.RequiredUniqueChars = 1;
+
+        // Lockout settings
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.AllowedForNewUsers = true;
+
+        // User settings
+        options.User.AllowedUserNameCharacters =
+            "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+        options.User.RequireUniqueEmail = true;
+
+        // Sign-in settings
+        options.SignIn.RequireConfirmedEmail = true; // Enforce email verification
+        options.SignIn.RequireConfirmedAccount = true;
+        options.SignIn.RequireConfirmedPhoneNumber = false;
+    })
+    .AddEntityFrameworkStores<ApplicationDbContext>() // Use Entity Framework Core as the store
+    .AddDefaultTokenProviders(); // Add token providers for email confirmation, password reset, etc.
+
 // Register Repositories
-// Register Services
-builder.Services.AddScoped<IUserRepository, UserRepository>(); 
+// Register Services (Keep only non-user-specific services/repositories)
 builder.Services.AddScoped<IWorkSessionRepository, WorkSessionRepository>();
-builder.Services.AddScoped<IEmailService, EmailService>(); 
-builder.Services.AddScoped<IUserService, UserService>(); 
+builder.Services.AddScoped<IUserService, UserService>(); // Re-added: The refactored UserService is still needed for custom business logic
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IWorkSessionService, WorkSessionService>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 
 // Configure JWT Authentication
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(options =>
+    {
+        // Force the system to use JWT for everything, overriding AddIdentity's Cookies
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -50,7 +86,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization(); // Add authorization services
 
 var app = builder.Build();
-
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

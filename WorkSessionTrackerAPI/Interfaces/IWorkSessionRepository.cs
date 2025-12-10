@@ -6,6 +6,6 @@ namespace WorkSessionTrackerAPI.Interfaces
 {
     public interface IWorkSessionRepository : IRepository<WorkSession>
     {
-        Task<IEnumerable<WorkSession>> GetWorkSessionsByEmployeeIdAsync(int employeeId);
+        Task<IEnumerable<WorkSession>> GetWorkSessionsByStudentIdAsync(int studentId); // Renamed from GetWorkSessionsByEmployeeIdAsync
     }
 }

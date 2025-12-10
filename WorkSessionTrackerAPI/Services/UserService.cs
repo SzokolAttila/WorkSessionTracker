@@ -1,197 +1,90 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using WorkSessionTrackerAPI.Data;
 using WorkSessionTrackerAPI.DTOs;
 using WorkSessionTrackerAPI.Interfaces;
 using WorkSessionTrackerAPI.Models;
-using System;
-using System.Threading.Tasks;
-using BCrypt.Net;
-using OtpNet;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Microsoft.IdentityModel.Tokens;
-using WorkSessionTrackerAPI.Data; // Added for ApplicationDbContext injection
+using System.Threading.Tasks;
+using OtpNet; // Assuming you have this for TOTP
 
 namespace WorkSessionTrackerAPI.Services
 {
     public class UserService : IUserService
     {
-        private readonly IUserRepository _userRepository;
-        private readonly IEmailService _emailService;
-        private readonly ApplicationDbContext _context; // Inject DbContext directly for specific queries like Include
-        private readonly IConfiguration _configuration; // Inject IConfiguration to access appsettings
+        private readonly UserManager<User> _userManager;
+        private readonly ApplicationDbContext _context; // For accessing other entities and for TPH casting
 
-        public UserService(IUserRepository userRepository, IEmailService emailService, ApplicationDbContext context, IConfiguration configuration)
+        public UserService(UserManager<User> userManager, ApplicationDbContext context)
         {
-            _userRepository = userRepository;
-            _emailService = emailService;
+            _userManager = userManager;
             _context = context;
-            _configuration = configuration;
         }
 
-        public async Task<Employee?> RegisterEmployeeAsync(RegisterUserDto dto)
+        public async Task<Student?> GetStudentByIdAsync(int studentId)
         {
-            if (await _userRepository.GetUserByEmailAsync(dto.Email) != null)
-            {
-                return null; // Email already exists
-            }
-
-            var employee = new Employee
-            {
-                Name = dto.Name,
-                Email = dto.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                EmailVerificationToken = Guid.NewGuid().ToString(),
-                EmailVerificationTokenExpiration = DateTime.UtcNow.AddHours(24), // Token valid for 24 hours
-                EmailVerified = false
-            };
-
-            await _userRepository.AddAsync(employee);
-            await _emailService.SendEmailAsync(employee.Email, "Verify Your Email",
-                $"Please verify your email using this token: {employee.EmailVerificationToken}");
-
-            return employee;
+            // Use UserManager to find the user, then attempt to cast to Student
+            var user = await _userManager.FindByIdAsync(studentId.ToString());
+            return user as Student;
         }
 
-        public async Task<Supervisor?> RegisterSupervisorAsync(RegisterUserDto dto)
+        public async Task<Company?> GetCompanyWithStudentsAsync(int companyId)
         {
-            if (await _userRepository.GetUserByEmailAsync(dto.Email) != null)
-            {
-                return null; // Email already exists
-            }
-
-            var supervisor = new Supervisor
-            {
-                Name = dto.Name,
-                Email = dto.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                EmailVerificationToken = Guid.NewGuid().ToString(),
-                EmailVerificationTokenExpiration = DateTime.UtcNow.AddHours(24),
-                EmailVerified = false,
-                TotpSeed = Base32Encoding.ToString(KeyGeneration.GenerateRandomKey(20)) // Generate a random TOTP seed
-            };
-
-            await _userRepository.AddAsync(supervisor);
-            await _emailService.SendEmailAsync(supervisor.Email, "Verify Your Email",
-                $"Please verify your email using this token: {supervisor.EmailVerificationToken}");
-
-            return supervisor;
+            // Use UserManager to find the user, then attempt to cast to Company
+            // Eager load students if Company model has a navigation property for them
+            // This assumes your Company model has a 'public ICollection<Student> Students { get; set; }'
+            var company = await _context.Users
+                                           .OfType<Company>()
+                                           .Include(s => s.Students)
+                                           .FirstOrDefaultAsync(s => s.Id == companyId);
+            return company;
         }
 
-        public async Task<bool> VerifyEmailAsync(VerifyEmailDto dto)
+        public async Task<string?> GenerateTotpSetupCodeForCompanyAsync(int companyId)
         {
-            var user = await _userRepository.GetByIdAsync(dto.UserId);
-            if (user == null || user.EmailVerified || user.EmailVerificationToken != dto.Token ||
-                user.EmailVerificationTokenExpiration < DateTime.UtcNow)
-            {
-                return false;
-            }
-
-            user.EmailVerified = true;
-            user.EmailVerificationToken = null; // Clear token after verification
-            user.EmailVerificationTokenExpiration = null;
-            await _userRepository.UpdateAsync(user);
-            return true;
-        }
-
-        public async Task<bool> ResendEmailVerificationAsync(int userId)
-        {
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null || user.EmailVerified)
-            {
-                return false;
-            }
-
-            user.EmailVerificationToken = Guid.NewGuid().ToString();
-            user.EmailVerificationTokenExpiration = DateTime.UtcNow.AddHours(24);
-            await _userRepository.UpdateAsync(user);
-            await _emailService.SendEmailAsync(user.Email, "Resend Email Verification",
-                $"Please verify your email using this new token: {user.EmailVerificationToken}");
-            return true;
-        }
-
-        public async Task<string?> GenerateTotpSetupCodeAsync(int supervisorId)
-        {
-            var supervisor = await _userRepository.GetSupervisorByIdAsync(supervisorId);
-            if (supervisor == null || string.IsNullOrEmpty(supervisor.TotpSeed))
+            var company = await _userManager.FindByIdAsync(companyId.ToString());
+            if (company is null)
             {
                 return null;
             }
 
-            // Compute the current 6-digit TOTP code using the stored TotpSeed
-            var totp = new Totp(Base32Encoding.ToBytes(supervisor.TotpSeed));
-            return totp.ComputeTotp();
+            // Use Identity's built-in authenticator key management for better security and integration.
+            var totpKey = await _userManager.GetAuthenticatorKeyAsync(company);
+            if (string.IsNullOrEmpty(totpKey))
+            {
+                // This generates a new key and stores it in the user's record.
+                await _userManager.ResetAuthenticatorKeyAsync(company);
+                totpKey = await _userManager.GetAuthenticatorKeyAsync(company);
+            }
+
+            var totp = new Totp(Base32Encoding.ToBytes(totpKey));
+            return totp.ComputeTotp(); // Return current TOTP code
         }
 
-        public async Task<bool> ConnectEmployeeToSupervisorAsync(ConnectEmployeeToSupervisorDto dto)
+        public async Task<bool> ConnectStudentToCompanyAsync(int studentId, StudentConnectToCompanyDto dto)
         {
-            var employee = await _userRepository.GetEmployeeByIdAsync(dto.EmployeeId);
-            var supervisor = await _userRepository.GetSupervisorByIdAsync(dto.SupervisorId);
+            var student = await _context.Users.OfType<Student>().FirstOrDefaultAsync(s => s.Id == studentId);
+            var company = await _userManager.FindByIdAsync(dto.CompanyId.ToString());
 
-            if (employee == null || supervisor == null || string.IsNullOrEmpty(supervisor.TotpSeed))
+            if (student is null || company is null)
             {
                 return false;
             }
 
-            // Verify TOTP code
-            var totp = new Totp(Base32Encoding.ToBytes(supervisor.TotpSeed));
-            if (!totp.VerifyTotp(dto.TotpCode, out _))
+            // Use Identity's built-in TOTP verification. This is more secure and handles time windows correctly.
+            var isTotpValid = await _userManager.VerifyTwoFactorTokenAsync(company, _userManager.Options.Tokens.AuthenticatorTokenProvider, dto.TotpCode);
+
+            if (!isTotpValid)
             {
-                return false; // TOTP verification failed
+                return false; // Invalid TOTP code
             }
 
-            employee.SupervisorId = supervisor.Id;
-            await _userRepository.UpdateAsync(employee);
+            // This assumes your Student model has a 'public int? CompanyId { get; set; }' property
+            student.CompanyId = company.Id;
+            _context.Users.Update(student);
+            await _context.SaveChangesAsync();
+
             return true;
-        }
-
-        public async Task<Supervisor?> GetSupervisorWithEmployeesAsync(int supervisorId)
-        {
-            return await _context.Supervisors
-                .Include(s => s.Employees)
-                    .ThenInclude(e => e.WorkSessions)
-                        .ThenInclude(w => w.Comment)
-                .FirstOrDefaultAsync(s => s.Id == supervisorId);
-        }
-
-        public async Task<string?> LoginAsync(LoginDto dto)
-        {
-            var user = await _userRepository.GetUserByEmailAsync(dto.Email);
-
-            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-            {
-                return null; // Invalid credentials
-            }
-
-            if (!user.EmailVerified)
-            {
-                // Optionally, you might want to return a specific error or trigger resend
-                return null; // Email not verified
-            }
-
-            // User authenticated, generate JWT token
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured.")));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Name, user.Name),
-                new Claim(ClaimTypes.Role, user.GetType().Name) // "Employee" or "Supervisor"
-            };
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddDays(7), // Token valid for 7 days
-                SigningCredentials = creds,
-                Issuer = _configuration["Jwt:Issuer"],
-                Audience = _configuration["Jwt:Audience"]
-            };
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
         }
     }
 }

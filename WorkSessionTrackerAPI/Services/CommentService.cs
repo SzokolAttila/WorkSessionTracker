@@ -17,7 +17,7 @@ namespace WorkSessionTrackerAPI.Services
             _workSessionRepository = workSessionRepository;
         }
 
-        public async Task<Comment?> CreateCommentAsync(CreateCommentDto dto, int supervisorId)
+        public async Task<Comment?> CreateCommentAsync(CreateCommentDto dto, int companyId) // Renamed from supervisorId
         {
             // Check if work session exists (further authorization is in controller)
             var workSession = await _workSessionRepository.GetByIdAsync(dto.WorkSessionId);
@@ -32,7 +32,7 @@ namespace WorkSessionTrackerAPI.Services
             var comment = new Comment
             {
                 WorkSessionId = dto.WorkSessionId,
-                SupervisorId = supervisorId,
+                CompanyId = companyId, // Renamed from SupervisorId
                 Content = dto.Content
             };
 

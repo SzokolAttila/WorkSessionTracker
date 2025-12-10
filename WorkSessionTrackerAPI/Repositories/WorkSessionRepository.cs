@@ -45,10 +45,10 @@ namespace WorkSessionTrackerAPI.Repositories
             await _context.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<WorkSession>> GetWorkSessionsByEmployeeIdAsync(int employeeId)
+        public async Task<IEnumerable<WorkSession>> GetWorkSessionsByStudentIdAsync(int studentId)
         {
             return await _context.WorkSessions
-                .Where(ws => ws.EmployeeId == employeeId)
+                .Where(ws => ws.StudentId == studentId)
                 .Include(ws => ws.Comment) // Auto-include the Comment for each WorkSession
                 .ToListAsync();
         }

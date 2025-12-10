@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">WorkSessionTracker</string>
-    <string name="title_activity_main">WorkSessionTracker</string>
-    <string name="package_name">com.brownie.worksessiontracker</string>
-    <string name="custom_url_scheme">com.brownie.worksessiontracker</string>
-</resources>

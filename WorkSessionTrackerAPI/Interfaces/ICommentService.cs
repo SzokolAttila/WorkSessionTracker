@@ -7,7 +7,7 @@ namespace WorkSessionTrackerAPI.Interfaces
 {
     public interface ICommentService
     {
-        Task<Comment?> CreateCommentAsync(CreateCommentDto dto, int supervisorId);
+        Task<Comment?> CreateCommentAsync(CreateCommentDto dto, int companyId); // Renamed from supervisorId
         Task<Comment?> UpdateCommentAsync(Comment existingComment, UpdateCommentDto dto);
         Task<bool> DeleteCommentAsync(Comment existingComment);
         Task<Comment?> GetCommentByIdAsync(int commentId);

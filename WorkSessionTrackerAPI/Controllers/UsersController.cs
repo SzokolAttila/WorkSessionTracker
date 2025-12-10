@@ -2,145 +2,67 @@ using Microsoft.AspNetCore.Mvc;
 using WorkSessionTrackerAPI.DTOs;
 using WorkSessionTrackerAPI.Interfaces;
 using Microsoft.AspNetCore.Authorization; // Add this using statement
-using System.Security.Claims; // Add this using statement for ClaimTypes
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity; // Add this for UserManager
+using WorkSessionTrackerAPI.Models; // Add this for User
 
 namespace WorkSessionTrackerAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UsersController : ControllerBase
+    [Authorize] // All endpoints in this controller now require authentication
+    public class UsersController : BaseApiController
     {
         private readonly IUserService _userService;
+        private readonly UserManager<User> _userManager; // Inject UserManager
 
-        public UsersController(IUserService userService)
+        public UsersController(IUserService userService, UserManager<User> userManager)
         {
             _userService = userService;
+            _userManager = userManager;
         }
 
-        [HttpPost("register/employee")]
-        public async Task<IActionResult> RegisterEmployee([FromBody] RegisterUserDto dto)
-        {
-            var employee = await _userService.RegisterEmployeeAsync(dto);
-            if (employee == null)
-            {
-                return BadRequest("Email already registered.");
-            }
-            return CreatedAtAction(nameof(RegisterEmployee), new { id = employee.Id }, employee);
-        }
-
-        [HttpPost("register/supervisor")]
-        public async Task<IActionResult> RegisterSupervisor([FromBody] RegisterUserDto dto)
-        {
-            var supervisor = await _userService.RegisterSupervisorAsync(dto);
-            if (supervisor == null)
-            {
-                return BadRequest("Email already registered.");
-            }
-            return CreatedAtAction(nameof(RegisterSupervisor), new { id = supervisor.Id }, supervisor);
-        }
-
-        [HttpPost("verify-email")]
-        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailDto dto)
-        {
-            var result = await _userService.VerifyEmailAsync(dto);
-            if (!result)
-            {
-                return BadRequest("Invalid or expired token, or email already verified.");
-            }
-            return Ok("Email verified successfully.");
-        }
-
-        [HttpPost("resend-email-verification/{userId}")]
-        public async Task<IActionResult> ResendEmailVerification(int userId)
-        {
-            var result = await _userService.ResendEmailVerificationAsync(userId);
-            if (!result)
-            {
-                return BadRequest("User not found or email already verified.");
-            }
-            return Ok("Email verification link resent.");
-        }
-
-        [HttpPost("login")]
-        public async Task<IActionResult> Login([FromBody] LoginDto dto)
-        {
-            var token = await _userService.LoginAsync(dto);
-            if (token == null)
-            {
-                return Unauthorized("Invalid credentials or unverified email.");
-            }
-            return Ok(new { Token = token });
-        }
-
-        [Authorize] // Requires authentication
-        [HttpGet("supervisor/{supervisorId}/totp-setup")]
-        public async Task<IActionResult> GetTotpSetupCode(int supervisorId)
+        [HttpGet("company/totp-setup")]
+        [Authorize(Roles = "Company")] // Only companies can access this
+        public async Task<IActionResult> GetCompanyTotpSetupCode()
         {
             // Get the ID of the authenticated user
-            var authenticatedUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (authenticatedUserIdClaim == null || !int.TryParse(authenticatedUserIdClaim.Value, out int authenticatedUserId))
-            {
-                return Unauthorized("User ID not found in token.");
-            }
-            // Ensure the authenticated user is trying to access their own data
-            if (authenticatedUserId != supervisorId)
-            {
-                return Forbid("You are not authorized to access this supervisor's TOTP setup.");
-            }
+            var authenticatedUserId = GetAuthenticatedUserId();
 
-            var setupCode = await _userService.GenerateTotpSetupCodeAsync(supervisorId);
+            var setupCode = await _userService.GenerateTotpSetupCodeForCompanyAsync(authenticatedUserId);
             if (setupCode == null)
             {
-                return NotFound("Supervisor not found or TOTP not configured.");
+                return NotFound("User not found or TOTP not configured for this company.");
             }
             // Return the current 6-digit TOTP code
             return Ok(new { TotpCode = setupCode });
         }
 
-        [Authorize] // Requires authentication
-        [HttpPost("connect-employee-to-supervisor")]
-        public async Task<IActionResult> ConnectEmployeeToSupervisor([FromBody] ConnectEmployeeToSupervisorDto dto)
+        [HttpPost("connect-student-to-company")]
+        [Authorize(Roles = "Student")]
+        public async Task<IActionResult> ConnectStudentToCompany([FromBody] StudentConnectToCompanyDto dto)
         {
             // Get the ID of the authenticated user
-            var authenticatedUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (authenticatedUserIdClaim == null || !int.TryParse(authenticatedUserIdClaim.Value, out int authenticatedUserId))
-            {
-                return Unauthorized("User ID not found in token.");
-            }
-            // Ensure the authenticated user is trying to connect themselves
-            if (authenticatedUserId != dto.EmployeeId)
-            {
-                return Forbid("You are not authorized to connect another employee to a supervisor.");
-            }
+            var authenticatedUserId = GetAuthenticatedUserId();
 
-            var result = await _userService.ConnectEmployeeToSupervisorAsync(dto);
+            var result = await _userService.ConnectStudentToCompanyAsync(authenticatedUserId, dto);
             if (!result)
             {
-                return BadRequest("Failed to connect employee to supervisor. Check IDs and TOTP code.");
+                return BadRequest("Failed to connect student to company. Check Company ID and TOTP code.");
             }
-            return Ok("Employee successfully connected to supervisor.");
+            return Ok("Student successfully connected to company.");
         }
 
-        [Authorize] // Requires authentication
-        [HttpGet("supervisor/{supervisorId}/with-employees")]
-        public async Task<IActionResult> GetSupervisorWithEmployees(int supervisorId)
+        [HttpGet("company/with-students")]
+        [Authorize(Roles = "Company")] // Only companies can access this
+        public async Task<IActionResult> GetCompanyWithStudents()
         {
             // Get the ID of the authenticated user
-            var authenticatedUserIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
-            if (authenticatedUserIdClaim == null || !int.TryParse(authenticatedUserIdClaim.Value, out int authenticatedUserId))
-            {
-                return Unauthorized("User ID not found in token.");
-            }
-            // Ensure the authenticated user is trying to access their own data
-            if (authenticatedUserId != supervisorId)
-            {
-                return Forbid("You are not authorized to view this supervisor's employees.");
-            }
+            var authenticatedUserId = GetAuthenticatedUserId();
 
-            var supervisor = await _userService.GetSupervisorWithEmployeesAsync(supervisorId);
-            if (supervisor == null) return NotFound("Supervisor not found.");
-            return Ok(supervisor);
+            var company = await _userService.GetCompanyWithStudentsAsync(authenticatedUserId);
+            if (company == null) return NotFound("Company not found.");
+            return Ok(company);
         }
     }
 }

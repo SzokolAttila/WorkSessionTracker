@@ -12,7 +12,7 @@ namespace WorkSessionTrackerAPI.Models
         public int Id { get; set; }
         [Required] public DateTime StartDateTime { get; set; }
         [Required, EndDateGreaterThanStartDate(nameof(StartDateTime))] public DateTime EndDateTime { get; set; }
-        [Required] public int EmployeeId { get; set; }
+        [Required] public int StudentId { get; set; } // Renamed from EmployeeId
         public bool Verified { get; set; } = false;
         public string? Description { get; set; }
 
@@ -22,7 +22,7 @@ namespace WorkSessionTrackerAPI.Models
             get => EndDateTime - StartDateTime;
         }
         [JsonIgnore]
-        public Employee? Employee { get; set; } // Navigation property
+        public Student? Student { get; set; } // Navigation property (Renamed from Employee)
 
         public Comment? Comment { get; set; } // One-to-one navigation property
     }
