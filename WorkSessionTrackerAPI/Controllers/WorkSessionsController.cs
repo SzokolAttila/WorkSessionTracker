@@ -51,7 +51,7 @@ namespace WorkSessionTrackerAPI.Controllers
             var authorizationResult = await _authorizationService.AuthorizeAsync(User, studentId, Policies.CanAccessStudentData);
             if (!authorizationResult.Succeeded)
             {
-                return Forbid("You are not authorized to view these work sessions.");
+                return StatusCode(StatusCodes.Status403Forbidden, "You are not authorized to view these work sessions.");
             }
 
             var workSessions = await _workSessionService.GetStudentWorkSessionsAsync(studentId);
@@ -71,7 +71,7 @@ namespace WorkSessionTrackerAPI.Controllers
             var authorizationResult = await _authorizationService.AuthorizeAsync(User, workSession, Policies.IsWorkSessionOwner);
             if (!authorizationResult.Succeeded)
             {
-                return Forbid("You are not authorized to modify this work session.");
+                return StatusCode(StatusCodes.Status403Forbidden, "You are not authorized to modify this work session.");
             }
 
             var updatedWorkSession = await _workSessionService.UpdateWorkSessionAsync(workSession, dto);
@@ -94,7 +94,7 @@ namespace WorkSessionTrackerAPI.Controllers
             var authorizationResult = await _authorizationService.AuthorizeAsync(User, workSession, Policies.IsWorkSessionOwner);
             if (!authorizationResult.Succeeded)
             {
-                return Forbid("You are not authorized to modify this work session.");
+                return StatusCode(StatusCodes.Status403Forbidden, "You are not authorized to modify this work session.");
             }
 
             var result = await _workSessionService.DeleteWorkSessionAsync(workSession);
@@ -119,7 +119,7 @@ namespace WorkSessionTrackerAPI.Controllers
             var authorizationResult = await _authorizationService.AuthorizeAsync(User, workSession, Policies.CanVerifyWorkSession);
             if (!authorizationResult.Succeeded)
             {
-                return Forbid("You are not authorized to verify this student's work session.");
+                return StatusCode(StatusCodes.Status403Forbidden, "You are not authorized to verify this student's work session.");
             }
 
             var verifiedWorkSession = await _workSessionService.VerifyWorkSessionAsync(workSession);

@@ -12,6 +12,7 @@ using Microsoft.OpenApi;
 using WorkSessionTrackerAPI.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using System.Text;
+using WorkSessionTrackerAPI.Extensions;
 using WorkSessionTrackerAPI.Models.Enums;
 
 
@@ -129,6 +130,9 @@ builder.Services.AddAuthorization(options =>
 }); // Add authorization services
 
 var app = builder.Build();
+
+// Register the custom exception handling middleware at the top of the pipeline.
+app.UseExceptionMiddleware();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

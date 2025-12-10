@@ -47,7 +47,7 @@ namespace WorkSessionTrackerAPI.Controllers
             var authorizationResult = await _authorizationService.AuthorizeAsync(User, workSession, Policies.CanCommentOnWorkSession);
             if (!authorizationResult.Succeeded)
             {
-                return Forbid("You can only comment on work sessions of your own students.");
+                return StatusCode(StatusCodes.Status403Forbidden, "You can only comment on work sessions of your own students.");
             }
 
             var comment = await _commentService.CreateCommentAsync(dto, authenticatedUserId);
@@ -65,7 +65,10 @@ namespace WorkSessionTrackerAPI.Controllers
             if (comment is null) return NotFound("Comment not found.");
 
             var authorizationResult = await _authorizationService.AuthorizeAsync(User, comment, Policies.CanViewComment);
-            if (!authorizationResult.Succeeded) return Forbid("You are not authorized to view this comment.");
+            if (!authorizationResult.Succeeded)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "You are not authorized to view this comment.");
+            }
 
             return Ok(comment);
         }
@@ -79,8 +82,11 @@ namespace WorkSessionTrackerAPI.Controllers
             if (existingComment is null) return NotFound("Comment not found.");
 
             var authorizationResult = await _authorizationService.AuthorizeAsync(User, existingComment, Policies.IsCommentOwner);
-            if (!authorizationResult.Succeeded) return Forbid("You are not authorized to update this comment.");
-            
+            if (!authorizationResult.Succeeded)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, "You are not authorized to update this comment.");
+            }
+
             var updatedComment = await _commentService.UpdateCommentAsync(existingComment, dto);
             if (updatedComment == null) return BadRequest("Failed to update comment.");
             return Ok(updatedComment);
