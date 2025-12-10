@@ -4,6 +4,7 @@ using WorkSessionTrackerAPI.Interfaces;
 using Microsoft.AspNetCore.Authorization; // Add this using statement
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity; // Add this for UserManager
+using WorkSessionTrackerAPI.Authorization;
 using WorkSessionTrackerAPI.Models; // Add this for User
 
 namespace WorkSessionTrackerAPI.Controllers
@@ -23,7 +24,7 @@ namespace WorkSessionTrackerAPI.Controllers
         }
 
         [HttpGet("company/totp-setup")]
-        [Authorize(Roles = "Company")] // Only companies can access this
+        [Authorize(Policy = Policies.CompanyOnly)] // Only companies can access this
         public async Task<IActionResult> GetCompanyTotpSetupCode()
         {
             // Get the ID of the authenticated user
@@ -39,7 +40,7 @@ namespace WorkSessionTrackerAPI.Controllers
         }
 
         [HttpPost("connect-student-to-company")]
-        [Authorize(Roles = "Student")]
+        [Authorize(Policy = Policies.StudentOnly)]
         public async Task<IActionResult> ConnectStudentToCompany([FromBody] StudentConnectToCompanyDto dto)
         {
             // Get the ID of the authenticated user
@@ -54,7 +55,7 @@ namespace WorkSessionTrackerAPI.Controllers
         }
 
         [HttpGet("company/with-students")]
-        [Authorize(Roles = "Company")] // Only companies can access this
+        [Authorize(Policy = Policies.CompanyOnly)] // Only companies can access this
         public async Task<IActionResult> GetCompanyWithStudents()
         {
             // Get the ID of the authenticated user

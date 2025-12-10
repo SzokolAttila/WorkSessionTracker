@@ -9,7 +9,10 @@ using WorkSessionTrackerAPI.Models; // Add this using statement for your User mo
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using WorkSessionTrackerAPI.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using System.Text;
+using WorkSessionTrackerAPI.Models.Enums;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -77,6 +80,16 @@ builder.Services.AddScoped<IWorkSessionService, WorkSessionService>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 
+// Register Authorization Handlers
+builder.Services.AddScoped<IAuthorizationHandler, StudentDataAuthorizationHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, WorkSessionAuthorizationHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, CommentAuthorizationHandler>();
+
+// This is needed for handlers that use IHttpContextAccessor to get route data
+// Note: Not strictly needed for the current implementation as we pass resources directly,
+// but good practice to have if handlers evolve.
+builder.Services.AddHttpContextAccessor();
+
 // Configure JWT Authentication
 builder.Services.AddAuthentication(options =>
     {
@@ -100,6 +113,20 @@ builder.Services.AddAuthentication(options =>
     });
 
 builder.Services.AddAuthorization(); // Add authorization services
+builder.Services.AddAuthorization(options =>
+{
+    // Simple role-based policies
+    options.AddPolicy(Policies.StudentOnly, policy => policy.RequireRole(UserRoleEnum.Student.ToString()));
+    options.AddPolicy(Policies.CompanyOnly, policy => policy.RequireRole(UserRoleEnum.Company.ToString()));
+
+    // Resource-based policies
+    options.AddPolicy(Policies.CanAccessStudentData, policy => policy.AddRequirements(new StudentDataRequirement()));
+    options.AddPolicy(Policies.IsWorkSessionOwner, policy => policy.AddRequirements(new IsWorkSessionOwnerRequirement()));
+    options.AddPolicy(Policies.CanVerifyWorkSession, policy => policy.AddRequirements(new CanVerifyWorkSessionRequirement()));
+    options.AddPolicy(Policies.CanCommentOnWorkSession, policy => policy.AddRequirements(new CanCommentOnWorkSessionRequirement()));
+    options.AddPolicy(Policies.CanViewComment, policy => policy.AddRequirements(new CanViewCommentRequirement()));
+    options.AddPolicy(Policies.IsCommentOwner, policy => policy.AddRequirements(new IsCommentOwnerRequirement()));
+}); // Add authorization services
 
 var app = builder.Build();
 
