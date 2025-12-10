@@ -141,6 +141,15 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+// Seed the database with roles and admin user
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Initializing database and seeding data...");
+    await DataSeeder.InitializeAsync(services);
+}
+
 // Register the custom exception handling middleware at the top of the pipeline.
 app.UseExceptionMiddleware();
 

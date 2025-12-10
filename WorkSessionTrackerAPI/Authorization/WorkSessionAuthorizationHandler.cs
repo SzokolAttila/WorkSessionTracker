@@ -1,93 +1,56 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using System.Threading.Tasks;
-using WorkSessionTrackerAPI.Interfaces;
+using WorkSessionTrackerAPI.Data;
 using WorkSessionTrackerAPI.Models;
+using WorkSessionTrackerAPI.Models.Enums;
 
 namespace WorkSessionTrackerAPI.Authorization
 {
-    public class IsWorkSessionOwnerRequirement : IAuthorizationRequirement { }
-    public class CanVerifyWorkSessionRequirement : IAuthorizationRequirement { }
-    public class CanCommentOnWorkSessionRequirement : IAuthorizationRequirement { }
-
-    public class WorkSessionAuthorizationHandler : IAuthorizationHandler
+    public class WorkSessionAuthorizationHandler :
+        IAuthorizationHandler // Implement the root interface to handle multiple requirements
     {
-        private readonly IUserService _userService;
+        private readonly ApplicationDbContext _context;
 
-        public WorkSessionAuthorizationHandler(IUserService userService)
+        public WorkSessionAuthorizationHandler(ApplicationDbContext context)
         {
-            _userService = userService;
+            _context = context;
         }
 
         public async Task HandleAsync(AuthorizationHandlerContext context)
         {
-            var pendingRequirements = context.PendingRequirements.ToList();
-            if (context.Resource is not WorkSession resource)
+            // Admins can do anything
+            if (context.User.IsInRole(UserRoleEnum.Admin.ToString()))
             {
+                foreach (var requirement in context.PendingRequirements)
+                    context.Succeed(requirement);
                 return;
             }
 
-            foreach (var requirement in pendingRequirements)
+            var authenticatedUserId = int.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var workSession = context.Resource as WorkSession;
+
+            if (workSession == null) return;
+
+            foreach (var requirement in context.PendingRequirements)
             {
-                if (requirement is IsWorkSessionOwnerRequirement ownerRequirement)
+                if (requirement is IsWorkSessionOwnerRequirement)
                 {
-                    await HandleRequirementAsync(context, ownerRequirement, resource);
+                    if (workSession.StudentId == authenticatedUserId)
+                    {
+                        context.Succeed(requirement);
+                    }
                 }
-                else if (requirement is CanVerifyWorkSessionRequirement verifyRequirement)
+                else if (requirement is CanVerifyWorkSessionRequirement)
                 {
-                    await HandleRequirementAsync(context, verifyRequirement, resource);
-                }
-                else if (requirement is CanCommentOnWorkSessionRequirement commentRequirement)
-                {
-                    await HandleRequirementAsync(context, commentRequirement, resource);
+                    var isCompanyAndStudentIsTheirs = await _context.Users.AnyAsync(u => u.Id == workSession.StudentId && ((Student)u).CompanyId == authenticatedUserId);
+                    if (context.User.IsInRole(UserRoleEnum.Company.ToString()) && isCompanyAndStudentIsTheirs)
+                    {
+                        context.Succeed(requirement);
+                    }
                 }
             }
         }
-        // Handles the "IsWorkSessionOwner" policy
-        private Task HandleRequirementAsync(AuthorizationHandlerContext context, IsWorkSessionOwnerRequirement requirement, WorkSession resource)
-        {
-            if (HasValidId(context, out var authenticatedUserId))
-            {
-                if (context.User.IsInRole("Student") && resource.StudentId == authenticatedUserId)
-                {
-                    context.Succeed(requirement);
-                }
-            }
-
-            return Task.CompletedTask;
-        }
-
-        // Handles the "CanVerifyWorkSession" and "CanCommentOnWorkSession" policies
-        private async Task HandleCompanyAccessRequirement(AuthorizationHandlerContext context, IAuthorizationRequirement requirement, WorkSession resource)
-        {
-            if (!context.User.IsInRole("Company"))
-            {
-                return;
-            }
-
-            if (HasValidId(context, out var authenticatedUserId))
-            {
-                var company = await _userService.GetCompanyWithStudentsAsync(authenticatedUserId);
-
-                if (company != null && company.Students.Any(s => s.Id == resource.StudentId))
-                {
-                    context.Succeed(requirement);
-                }
-            }
-        }
-
-        private Task HandleRequirementAsync(AuthorizationHandlerContext context, CanVerifyWorkSessionRequirement requirement, WorkSession resource)
-        {
-            return HandleCompanyAccessRequirement(context, requirement, resource);
-        }
-
-        private Task HandleRequirementAsync(AuthorizationHandlerContext context, CanCommentOnWorkSessionRequirement requirement, WorkSession resource)
-        {
-            return HandleCompanyAccessRequirement(context, requirement, resource);
-        }
-        
-        private bool HasValidId(AuthorizationHandlerContext context, out int authenticatedUserId)
-            => int.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier),
-                out authenticatedUserId);
     }
 }
