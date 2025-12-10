@@ -70,6 +70,35 @@ namespace WorkSessionTrackerAPI.Controllers
             return Ok(workSessions);
         }
 
+        [HttpGet("student/{studentId}/summary")]
+        public async Task<IActionResult> GetWorkSessionSummary(int studentId, [FromQuery] int year, [FromQuery] int month)
+        {
+            var authenticatedUserId = GetAuthenticatedUserId();
+            _logger.LogInformation(
+                "User {UserId} attempting to get work session summary for student {StudentId} for {Year}-{Month}.",
+                authenticatedUserId, studentId, year, month);
+
+            var authorizationResult = await _authorizationService.AuthorizeAsync(User, studentId, Policies.CanAccessStudentData);
+            if (!authorizationResult.Succeeded)
+            {
+                _logger.LogWarning(
+                    "User {UserId} is not authorized to view work session summary for student {StudentId}.",
+                    authenticatedUserId, studentId);
+                return StatusCode(StatusCodes.Status403Forbidden, "You are not authorized to view this data.");
+            }
+
+            if (year < 1900 || year > 2100 || month < 1 || month > 12)
+            {
+                _logger.LogWarning("Invalid date parameters provided: Year {Year}, Month {Month}", year, month);
+                return BadRequest("Invalid year or month provided.");
+            }
+
+            var summary = await _workSessionService.GetWorkSessionSummaryAsync(studentId, year, month);
+
+            _logger.LogInformation("Successfully retrieved work session summary for student {StudentId}.", studentId);
+            return Ok(summary);
+        }
+
         [HttpPut("{id}")] // Get ID from route
         public async Task<IActionResult> UpdateWorkSession(int id, [FromBody] UpdateWorkSessionDto dto)
         {

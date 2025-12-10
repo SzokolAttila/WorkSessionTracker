@@ -1,63 +1,65 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using WorkSessionTrackerAPI.DTOs;
 using WorkSessionTrackerAPI.Interfaces;
 using WorkSessionTrackerAPI.Models;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace WorkSessionTrackerAPI.Services
 {
     public class WorkSessionService : IWorkSessionService
     {
         private readonly IWorkSessionRepository _workSessionRepository;
-        // private readonly IUserRepository _userRepository; // No longer needed, UserManager handles user checks
 
         public WorkSessionService(IWorkSessionRepository workSessionRepository)
         {
             _workSessionRepository = workSessionRepository;
         }
 
-        public async Task<WorkSession?> CreateWorkSessionAsync(CreateWorkSessionDto dto, int studentId) // Student existence check is now in the controller
+        public async Task<WorkSession?> CreateWorkSessionAsync(CreateWorkSessionDto dto, int studentId)
         {
             var workSession = new WorkSession
             {
-                StartDateTime = dto.StartDateTime,
-                EndDateTime = dto.EndDateTime,
+                StartDateTime = dto.StartDateTime.ToUniversalTime(),
+                EndDateTime = dto.EndDateTime.ToUniversalTime(),
                 Description = dto.Description,
-                StudentId = studentId, // Renamed from EmployeeId
-                Verified = false // New work sessions are unverified by default
+                StudentId = studentId,
+                Verified = false
             };
 
-            await _workSessionRepository.AddAsync(workSession);
+            await _workSessionRepository.CreateAsync(workSession);
             return workSession;
         }
 
-        public async Task<IEnumerable<WorkSession>> GetStudentWorkSessionsAsync(int studentId) // Authorization is now in the controller
+        public async Task<bool> DeleteWorkSessionAsync(WorkSession workSession)
         {
-            return await _workSessionRepository.GetWorkSessionsByStudentIdAsync(studentId); // Renamed from GetWorkSessionsByEmployeeIdAsync
+            return await _workSessionRepository.DeleteAsync(workSession);
         }
 
-        public async Task<WorkSession?> UpdateWorkSessionAsync(WorkSession existingWorkSession, UpdateWorkSessionDto dto) // Authorization is now in the controller
+        public async Task<IEnumerable<WorkSession>> GetStudentWorkSessionsAsync(int studentId)
         {
-            existingWorkSession.StartDateTime = dto.StartDateTime;
-            existingWorkSession.EndDateTime = dto.EndDateTime;
-            existingWorkSession.Description = dto.Description;
-
-            await _workSessionRepository.UpdateAsync(existingWorkSession);
-            return existingWorkSession;
+            return await _workSessionRepository.GetStudentWorkSessionsAsync(studentId);
         }
 
-        public async Task<bool> DeleteWorkSessionAsync(WorkSession existingWorkSession) // Authorization is now in the controller
+        public async Task<WorkSessionSummaryDto> GetWorkSessionSummaryAsync(int studentId, int year, int month)
         {
-            await _workSessionRepository.DeleteAsync(existingWorkSession);
-            return true;
+            return await _workSessionRepository.GetWorkSessionSummaryAsync(studentId, year, month);
         }
 
-        public async Task<WorkSession?> VerifyWorkSessionAsync(WorkSession existingWorkSession) // Authorization is now in the controller
+        public async Task<WorkSession?> UpdateWorkSessionAsync(WorkSession workSession, UpdateWorkSessionDto dto)
         {
-            existingWorkSession.Verified = true; // Always set to true for this POST endpoint
-            await _workSessionRepository.UpdateAsync(existingWorkSession);
-            return existingWorkSession;
+            workSession.StartDateTime = dto.StartDateTime.ToUniversalTime();
+            workSession.EndDateTime = dto.EndDateTime.ToUniversalTime();
+            workSession.Description = dto.Description;
+            await _workSessionRepository.UpdateAsync(workSession);
+            return workSession;
+        }
+
+        public async Task<WorkSession?> VerifyWorkSessionAsync(WorkSession workSession)
+        {
+            workSession.Verified = true;
+            await _workSessionRepository.UpdateAsync(workSession);
+            return workSession;
         }
     }
 }
