@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Identity; // Add this using statement
 using WorkSessionTrackerAPI.Models; // Add this using statement for your User model
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 using System.Text;
 
 
@@ -17,7 +18,22 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers(); // Add this line to enable controllers
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    // Add a security definition for JWT Bearer tokens
+    options.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Description = "JWT Authorization header using the Bearer scheme."
+    });
+
+    options.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("bearer", document)] = []
+    });
+});
 
 // Configure DbContext with SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
@@ -91,7 +107,11 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger(); // Enables the Swagger middleware
-    app.UseSwaggerUI(); // Enables the Swagger UI middleware
+    app.UseSwaggerUI(c =>
+    {
+        c.EnablePersistAuthorization();
+    }); // Enables the Swagger UI middleware
+    
 }
 
 app.UseHttpsRedirection();
