@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  postgres-db:
+    # Use the official PostgreSQL image from Docker Hub
+    image: postgres:16
+    container_name: worksessiontracker-postgres
+    restart: always
+    
+    # Set environment variables to match your appsettings.json
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=WorkSessionTrackerDb
+    
+    # Map the container's port 5432 to your local machine's port 5432
+    ports:
+      - "5432:5432"
+      
+    # Persist data even if the container is stopped or removed
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:

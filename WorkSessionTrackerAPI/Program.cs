@@ -51,7 +51,7 @@ builder.Services.AddSwaggerGen(options =>
 
 // Configure DbContext with SQL Server
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configure ASP.NET Identity
 builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
