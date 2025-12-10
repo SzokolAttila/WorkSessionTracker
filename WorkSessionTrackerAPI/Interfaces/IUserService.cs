@@ -9,6 +9,5 @@ namespace WorkSessionTrackerAPI.Interfaces
         Task<string?> GenerateTotpSetupCodeForCompanyAsync(int companyId);
         Task<bool> ConnectStudentToCompanyAsync(int studentId, StudentConnectToCompanyDto dto);
         Task<Company?> GetCompanyWithStudentsAsync(int companyId);
-        Task<Student?> GetStudentByIdAsync(int studentId);
     }
 }

@@ -21,13 +21,6 @@ namespace WorkSessionTrackerAPI.Services
             _context = context;
         }
 
-        public async Task<Student?> GetStudentByIdAsync(int studentId)
-        {
-            // Use UserManager to find the user, then attempt to cast to Student
-            var user = await _userManager.FindByIdAsync(studentId.ToString());
-            return user as Student;
-        }
-
         public async Task<Company?> GetCompanyWithStudentsAsync(int companyId)
         {
             // Use UserManager to find the user, then attempt to cast to Company
