@@ -28,7 +28,11 @@ namespace WorkSessionTrackerAPI.Authorization
                 return;
             }
 
-            var authenticatedUserId = int.Parse(context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
+            if (!int.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var authenticatedUserId))
+            {
+                return;
+            }
+
             var workSession = context.Resource as WorkSession;
 
             if (workSession == null) return;
