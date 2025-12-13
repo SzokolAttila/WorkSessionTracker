@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -8,7 +9,6 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using WorkSessionTrackerAPI.Data;
 using WorkSessionTrackerAPI.DTOs;
@@ -18,7 +18,7 @@ using Xunit;
 
 namespace WorkSessionTrackerAPI.IntegrationTests
 {
-    public class CommentsControllerTests : IClassFixture<CustomWebApplicationFactory<Program>>, IAsyncLifetime
+    public class WorkSessionsControllerTests : IClassFixture<CustomWebApplicationFactory<Program>>, IAsyncLifetime
     {
         private readonly HttpClient _client;
         private readonly CustomWebApplicationFactory<Program> _factory;
@@ -26,19 +26,20 @@ namespace WorkSessionTrackerAPI.IntegrationTests
 
         // User and entity IDs for tests
         private int _studentId;
-        private const string StudentEmail = "student.comment@example.com";
+        private const string StudentEmail = "student.ws@example.com";
         private const string StudentPassword = "Password123!";
 
         private int _companyId;
-        private const string CompanyEmail = "company.comment@example.com";
+        private const string CompanyEmail = "company.ws@example.com";
         private const string CompanyPassword = "Password123!";
 
-        private const string OtherCompanyEmail = "other.company.comment@example.com";
+        private int _otherCompanyId;
+        private const string OtherCompanyEmail = "other.company.ws@example.com";
         private const string OtherCompanyPassword = "Password123!";
 
         private int _workSessionId;
 
-        public CommentsControllerTests(CustomWebApplicationFactory<Program> factory)
+        public WorkSessionsControllerTests(CustomWebApplicationFactory<Program> factory)
         {
             _factory = factory;
             _client = factory.CreateClient();
@@ -97,6 +98,7 @@ namespace WorkSessionTrackerAPI.IntegrationTests
             await userManager.AddToRoleAsync(otherCompany, "Company");
             var otherCompanyToken = await userManager.GenerateEmailConfirmationTokenAsync(otherCompany);
             await userManager.ConfirmEmailAsync(otherCompany, otherCompanyToken);
+            _otherCompanyId = otherCompany.Id;
 
             // Connect student to company
             student.CompanyId = _companyId;
@@ -127,156 +129,164 @@ namespace WorkSessionTrackerAPI.IntegrationTests
             return authClient;
         }
 
-        private async Task<Comment> CreateCommentViaApiAsync(HttpClient client, int workSessionId, string content)
-        {
-            var dto = new CreateCommentDto { WorkSessionId = workSessionId, Content = content };
-            var response = await client.PostAsJsonAsync("/api/comments", dto);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<Comment>();
-        }
-
         [Fact]
-        public async Task CreateComment_AsAuthorizedCompany_ReturnsOk()
-        {
-            // Arrange
-            var authClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
-            var dto = new CreateCommentDto { WorkSessionId = _workSessionId, Content = "Good work!" };
-
-            // Act
-            var response = await authClient.PostAsJsonAsync("/api/comments", dto);
-
-            // Assert
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
-            var comment = await response.Content.ReadFromJsonAsync<Comment>();
-            comment.Should().NotBeNull();
-            comment.Content.Should().Be("Good work!");
-            comment.WorkSessionId.Should().Be(_workSessionId);
-            comment.CompanyId.Should().Be(_companyId);
-            comment.CompanyId.Should().Be(_companyId);
-        }
-
-        [Fact]
-        public async Task CreateComment_AsStudent_ReturnsForbidden()
+        public async Task CreateWorkSession_AsStudent_ReturnsOk()
         {
             // Arrange
             var authClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
-            var dto = new CreateCommentDto { WorkSessionId = _workSessionId, Content = "I commented on my own session." };
+            var dto = new CreateWorkSessionDto
+            {
+                StartDateTime = DateTime.UtcNow,
+                EndDateTime = DateTime.UtcNow.AddHours(1),
+                Description = "New session"
+            };
 
             // Act
-            var response = await authClient.PostAsJsonAsync("/api/comments", dto);
+            var response = await authClient.PostAsJsonAsync("/api/worksessions", dto);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var workSession = await response.Content.ReadFromJsonAsync<WorkSession>();
+            workSession.Should().NotBeNull();
+            workSession.Description.Should().Be("New session");
+            workSession.StudentId.Should().Be(_studentId);
+        }
+
+        [Fact]
+        public async Task CreateWorkSession_AsCompany_ReturnsForbidden()
+        {
+            // Arrange
+            var authClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
+            var dto = new CreateWorkSessionDto { StartDateTime = DateTime.UtcNow, EndDateTime = DateTime.UtcNow.AddHours(1) };
+
+            // Act
+            var response = await authClient.PostAsJsonAsync("/api/worksessions", dto);
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         }
 
         [Fact]
-        public async Task CreateComment_AsUnauthorizedCompany_ReturnsForbidden()
+        public async Task GetWorkSessionsForStudent_AsSelf_ReturnsOk()
+        {
+            // Arrange
+            var authClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
+
+            // Act
+            var response = await authClient.GetAsync($"/api/worksessions/student/{_studentId}");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var sessions = await response.Content.ReadFromJsonAsync<List<WorkSession>>();
+            sessions.Should().HaveCount(1);
+            sessions[0].Id.Should().Be(_workSessionId);
+        }
+
+        [Fact]
+        public async Task GetWorkSessionsForStudent_AsAssociatedCompany_ReturnsOk()
+        {
+            // Arrange
+            var authClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
+
+            // Act
+            var response = await authClient.GetAsync($"/api/worksessions/student/{_studentId}");
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task GetWorkSessionsForStudent_AsUnrelatedCompany_ReturnsForbidden()
         {
             // Arrange
             var authClient = await GetAuthenticatedClientAsync(OtherCompanyEmail, OtherCompanyPassword);
-            var dto = new CreateCommentDto { WorkSessionId = _workSessionId, Content = "I'm from another company." };
 
             // Act
-            var response = await authClient.PostAsJsonAsync("/api/comments", dto);
+            var response = await authClient.GetAsync($"/api/worksessions/student/{_studentId}");
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         }
 
         [Fact]
-        public async Task GetCommentById_AsWorkSessionOwner_ReturnsOk()
+        public async Task UpdateWorkSession_AsOwner_ReturnsOk()
         {
             // Arrange
-            var companyClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
-            var createdComment = await CreateCommentViaApiAsync(companyClient, _workSessionId, "A comment to get.");
-            var studentClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
+            var authClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
+            var dto = new UpdateWorkSessionDto { Description = "Updated description", EndDateTime = DateTime.UtcNow.AddHours(2), StartDateTime = DateTime.UtcNow.AddHours(-1) };
 
             // Act
-            var response = await studentClient.GetAsync($"/api/comments/{createdComment.Id}");
+            var response = await authClient.PutAsJsonAsync($"/api/worksessions/{_workSessionId}", dto);
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.OK);
-            var comment = await response.Content.ReadFromJsonAsync<Comment>();
-            comment.Should().NotBeNull();
-            comment.Id.Should().Be(createdComment.Id);
+            var workSession = await response.Content.ReadFromJsonAsync<WorkSession>();
+            workSession.Description.Should().Be("Updated description");
         }
 
         [Fact]
-        public async Task GetCommentById_AsUnrelatedUser_ReturnsForbidden()
+        public async Task UpdateWorkSession_AsNonOwner_ReturnsForbidden()
         {
             // Arrange
-            var companyClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
-            var createdComment = await CreateCommentViaApiAsync(companyClient, _workSessionId, "A comment to get.");
-            var otherCompanyClient = await GetAuthenticatedClientAsync(OtherCompanyEmail, OtherCompanyPassword);
+            var authClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
+            var dto = new UpdateWorkSessionDto { Description = "Company trying to update", StartDateTime = DateTime.UtcNow, EndDateTime = DateTime.UtcNow.AddHours(1) };
 
             // Act
-            var response = await otherCompanyClient.GetAsync($"/api/comments/{createdComment.Id}");
+            var response = await authClient.PutAsJsonAsync($"/api/worksessions/{_workSessionId}", dto);
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         }
 
         [Fact]
-        public async Task UpdateComment_AsCommentOwner_ReturnsOk()
+        public async Task DeleteWorkSession_AsOwner_ReturnsNoContent()
         {
             // Arrange
-            var authClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
-            var createdComment = await CreateCommentViaApiAsync(authClient, _workSessionId, "Original content.");
-            var dto = new UpdateCommentDto { Content = "Updated content" };
+            var authClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
 
             // Act
-            var response = await authClient.PutAsJsonAsync($"/api/comments/{createdComment.Id}", dto);
-
-            // Assert
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
-            var updatedComment = await response.Content.ReadFromJsonAsync<Comment>();
-            updatedComment.Content.Should().Be("Updated content");
-        }
-
-        [Fact]
-        public async Task UpdateComment_AsNonOwner_ReturnsForbidden()
-        {
-            // Arrange
-            var companyClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
-            var createdComment = await CreateCommentViaApiAsync(companyClient, _workSessionId, "Original content.");
-            var studentClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
-            var dto = new UpdateCommentDto { Content = "I tried to update" };
-
-            // Act
-            var response = await studentClient.PutAsJsonAsync($"/api/comments/{createdComment.Id}", dto);
-
-            // Assert
-            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        }
-
-        [Fact]
-        public async Task DeleteComment_AsCommentOwner_ReturnsNoContent()
-        {
-            // Arrange
-            var authClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
-            var createdComment = await CreateCommentViaApiAsync(authClient, _workSessionId, "A comment to delete.");
-
-            // Act
-            var response = await authClient.DeleteAsync($"/api/comments/{createdComment.Id}");
+            var response = await authClient.DeleteAsync($"/api/worksessions/{_workSessionId}");
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.NoContent);
-
-            // Verify deletion
-            var getResponse = await authClient.GetAsync($"/api/comments/{createdComment.Id}");
-            getResponse.StatusCode.Should().Be(HttpStatusCode.NotFound);
         }
 
         [Fact]
-        public async Task DeleteComment_AsNonOwner_ReturnsForbidden()
+        public async Task VerifyWorkSession_AsAssociatedCompany_ReturnsOk()
         {
             // Arrange
-            var companyClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
-            var createdComment = await CreateCommentViaApiAsync(companyClient, _workSessionId, "A comment to delete.");
-            var studentClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
+            var authClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
 
             // Act
-            var response = await studentClient.DeleteAsync($"/api/comments/{createdComment.Id}");
+            var response = await authClient.PostAsync($"/api/worksessions/verify/{_workSessionId}", null);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var workSession = await response.Content.ReadFromJsonAsync<WorkSession>();
+            workSession.Verified.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task VerifyWorkSession_AsStudent_ReturnsForbidden()
+        {
+            // Arrange
+            var authClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
+
+            // Act
+            var response = await authClient.PostAsync($"/api/worksessions/verify/{_workSessionId}", null);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task VerifyWorkSession_AsUnrelatedCompany_ReturnsForbidden()
+        {
+            // Arrange
+            var authClient = await GetAuthenticatedClientAsync(OtherCompanyEmail, OtherCompanyPassword);
+
+            // Act
+            var response = await authClient.PostAsync($"/api/worksessions/verify/{_workSessionId}", null);
 
             // Assert
             response.StatusCode.Should().Be(HttpStatusCode.Forbidden);

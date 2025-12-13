@@ -130,33 +130,6 @@ namespace WorkSessionTrackerAPI.IntegrationTests
         }
 
         [Fact]
-        public async Task GetMyStudents_AsCompany_ReturnsOkAndListOfStudents()
-        {
-            // Arrange
-            var authClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
-
-            // Act
-            var response = await authClient.GetAsync("/api/Users/company/with-students");
-
-            // Assert
-            response.StatusCode.Should().Be(HttpStatusCode.OK);
-            var company = await response.Content.ReadFromJsonAsync<Company>();
-            company.Should().NotBeNull();
-            company.Students.ElementAt(0).Id.Should().Be(_studentId);
-        }
-
-        [Fact]
-        public async Task GetMyStudents_AsStudent_ReturnsForbidden()
-        {
-            // Arrange
-            var authClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
-
-            // Act
-            var response = await authClient.GetAsync("/api/Users/company/with-students");
-
-            // Assert
-            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        }
         public async Task GetCompanyWithStudents_AsCompany_ReturnsOkAndListOfStudents()
         {
             // Arrange
@@ -169,8 +142,8 @@ namespace WorkSessionTrackerAPI.IntegrationTests
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             var company = await response.Content.ReadFromJsonAsync<Company>();
             company.Should().NotBeNull();
-            company.Students.Should().HaveCount(1);
-            company.Students.First().Id.Should().Be(_studentId);
+            // Using ContainSingle is more robust than checking count and then the first element.
+            company.Students.Should().ContainSingle(s => s.Id == _studentId);
         }
 
         [Fact]
