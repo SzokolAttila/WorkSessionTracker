@@ -209,6 +209,87 @@ namespace WorkSessionTrackerAPI.IntegrationTests
         }
 
         [Fact]
+        public async Task GetWorkSessionSummary_AsOwner_ReturnsCorrectSummary()
+        {
+            // Arrange
+            var authClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
+
+            // Add an extra verified session for a more robust summary check
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var verifiedSession = new WorkSession
+                {
+                    StudentId = _studentId,
+                    StartDateTime = DateTime.UtcNow.AddMinutes(-90),
+                    EndDateTime = DateTime.UtcNow.AddMinutes(-30), // 1 hour duration
+                    Description = "Verified Session",
+                    Verified = true
+                };
+                context.WorkSessions.Add(verifiedSession);
+                await context.SaveChangesAsync();
+            }
+
+            var now = DateTime.UtcNow;
+            var url = $"/api/worksessions/student/{_studentId}/summary?year={now.Year}&month={now.Month}";
+
+            // Act
+            var response = await authClient.GetAsync(url);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            var summary = await response.Content.ReadFromJsonAsync<WorkSessionSummaryDto>();
+            summary.Should().NotBeNull();
+            // The initial seed has 1 unverified hour. This test adds 1 verified hour.
+            summary.TotalHours.Should().BeApproximately(2, 0.01);
+            summary.VerifiedHours.Should().BeApproximately(1, 0.01);
+        }
+
+        [Fact]
+        public async Task GetWorkSessionSummary_AsAssociatedCompany_ReturnsOk()
+        {
+            // Arrange
+            var authClient = await GetAuthenticatedClientAsync(CompanyEmail, CompanyPassword);
+            var now = DateTime.UtcNow;
+            var url = $"/api/worksessions/student/{_studentId}/summary?year={now.Year}&month={now.Month}";
+
+            // Act
+            var response = await authClient.GetAsync(url);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+        }
+
+        [Fact]
+        public async Task GetWorkSessionSummary_AsUnrelatedCompany_ReturnsForbidden()
+        {
+            // Arrange
+            var authClient = await GetAuthenticatedClientAsync(OtherCompanyEmail, OtherCompanyPassword);
+            var now = DateTime.UtcNow;
+            var url = $"/api/worksessions/student/{_studentId}/summary?year={now.Year}&month={now.Month}";
+
+            // Act
+            var response = await authClient.GetAsync(url);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task GetWorkSessionSummary_WithInvalidDate_ReturnsBadRequest()
+        {
+            // Arrange
+            var authClient = await GetAuthenticatedClientAsync(StudentEmail, StudentPassword);
+            var url = $"/api/worksessions/student/{_studentId}/summary?year=9999&month=13";
+
+            // Act
+            var response = await authClient.GetAsync(url);
+
+            // Assert
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        }
+
+        [Fact]
         public async Task UpdateWorkSession_AsOwner_ReturnsOk()
         {
             // Arrange
