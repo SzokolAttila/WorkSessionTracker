@@ -14,6 +14,7 @@ namespace WorkSessionTrackerAPI.IntegrationTests
     // This makes the factory more reusable and less confusing.
     public class CustomWebApplicationFactory<TStartup> : WebApplicationFactory<TStartup> where TStartup : class
     {
+        private readonly string _dbName = Guid.NewGuid().ToString();
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             // Set the environment to "Testing" to prevent production/development services
@@ -31,7 +32,7 @@ namespace WorkSessionTrackerAPI.IntegrationTests
                 {
                     services.Remove(dbContextDescriptor);
                 }
-                
+
                 var dbConnectionDescriptor = services.SingleOrDefault(
                     d => d.ServiceType == typeof(System.Data.Common.DbConnection));
 
@@ -43,7 +44,7 @@ namespace WorkSessionTrackerAPI.IntegrationTests
                 // Add a new DbContext that uses an in-memory database for testing.
                 services.AddDbContext<ApplicationDbContext>(options =>
                 {
-                    options.UseInMemoryDatabase("InMemoryDbForTesting");
+                    options.UseInMemoryDatabase(_dbName);
                 });
 
                 // Find and remove the real IEmailService registration.

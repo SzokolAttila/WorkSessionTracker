@@ -16,15 +16,9 @@ using WorkSessionTrackerAPI.Extensions;
 using WorkSessionTrackerAPI.Models.Enums;
 using Serilog;
 
-Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console()
-    .CreateBootstrapLogger();
-
-Log.Information("Starting up the application");
-
 var builder = WebApplication.CreateBuilder(args);
 
-// Replace the default logging with Serilog
+// Initialize Serilog configuration
 builder.Host.UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration));
 

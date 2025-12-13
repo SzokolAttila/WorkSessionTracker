@@ -34,15 +34,14 @@ namespace WorkSessionTrackerAPI.IntegrationTests
             {
                 using var scope = _factory.Services.CreateScope();
                 var context = scope.ServiceProvider.GetRequiredService<Data.ApplicationDbContext>();
-
-                // The in-memory database does not support EnsureDeletedAsync.
-                // To ensure test isolation, we clear the Users table before each test.
-                // This will cascade-delete related entities like WorkSessions and Comments.
+                
+                // Clear dependent tables first to ensure proper test isolation.
+                context.Comments.RemoveRange(context.Comments);
+                context.WorkSessions.RemoveRange(context.WorkSessions);
                 context.Users.RemoveRange(context.Users);
                 await context.SaveChangesAsync();
 
-                // Ensure the database is created and seed roles for the test.
-                await context.Database.EnsureCreatedAsync();
+                // This call is problematic and can cause "logger is frozen" errors. It's not needed for the in-memory provider.
 
                 var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
                 foreach (var roleName in Enum.GetNames(typeof(UserRoleEnum)))
