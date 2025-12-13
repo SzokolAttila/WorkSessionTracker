@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WorkSessionTrackerAPI.UnitTests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f96da89fa2c46e06eae2ee896ceea9519aacc04c")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1742e61ea9a9e0861d9293d3721adac84f688469")]
 [assembly: System.Reflection.AssemblyProductAttribute("WorkSessionTrackerAPI.UnitTests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WorkSessionTrackerAPI.UnitTests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

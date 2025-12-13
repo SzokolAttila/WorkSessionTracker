@@ -49,9 +49,12 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Configure DbContext with SQL Server
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    // Configure DbContext with PostgreSQL for production/development
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+}
 
 // Configure ASP.NET Identity
 builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
@@ -143,10 +146,12 @@ var app = builder.Build();
 // Seed the database with roles and admin user
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    var logger = services.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Initializing database and seeding data...");
-    await DataSeeder.InitializeAsync(services);
+    if (app.Environment.IsEnvironment("Testing") == false)  {
+        var services = scope.ServiceProvider;
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation("Initializing database and seeding data...");
+        await DataSeeder.InitializeAsync(services);
+    }
 }
 
 // Register the custom exception handling middleware at the top of the pipeline.
