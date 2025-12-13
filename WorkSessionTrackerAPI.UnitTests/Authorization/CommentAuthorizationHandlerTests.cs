@@ -61,7 +61,8 @@ namespace WorkSessionTrackerAPI.UnitTests.Authorization
             var handler = new CommentAuthorizationHandler(dbContext);
             var requirement = new CanCommentOnWorkSessionRequirement();
             var adminUser = CreateUser("99", UserRoleEnum.Admin.ToString());
-            var context = new AuthorizationHandlerContext(new[] { requirement }, adminUser, commentId);
+            var comment = await dbContext.Comments.FindAsync(commentId);
+            var context = new AuthorizationHandlerContext(new[] { requirement }, adminUser, comment);
 
             // Act
             await handler.HandleAsync(context);
@@ -80,7 +81,8 @@ namespace WorkSessionTrackerAPI.UnitTests.Authorization
             var requirement = new CanCommentOnWorkSessionRequirement();
             var otherStudentId = 2;
             var requestingStudent = CreateUser(otherStudentId.ToString(), UserRoleEnum.Student.ToString());
-            var context = new AuthorizationHandlerContext(new[] { requirement }, requestingStudent, commentId);
+            var comment = await dbContext.Comments.FindAsync(commentId);
+            var context = new AuthorizationHandlerContext(new[] { requirement }, requestingStudent, comment);
 
             // Act
             await handler.HandleAsync(context);
@@ -99,7 +101,8 @@ namespace WorkSessionTrackerAPI.UnitTests.Authorization
             var requirement = new CanViewCommentRequirement();
             var otherCompanyId = 99;
             var companyUser = CreateUser(otherCompanyId.ToString(), UserRoleEnum.Company.ToString());
-            var context = new AuthorizationHandlerContext(new[] { requirement }, companyUser, commentId);
+            var comment = await dbContext.Comments.FindAsync(commentId);
+            var context = new AuthorizationHandlerContext(new[] { requirement }, companyUser, comment);
 
             // Act
             await handler.HandleAsync(context);
@@ -109,15 +112,14 @@ namespace WorkSessionTrackerAPI.UnitTests.Authorization
         }
 
         [Fact]
-        public async Task HandleAsync_ShouldFail_WhenCommentNotFound()
+        public async Task HandleAsync_ShouldFail_WhenResourceIsNull()
         {
             // Arrange
             var dbContext = await GetDbContext();
             var handler = new CommentAuthorizationHandler(dbContext);
             var requirement = new CanCommentOnWorkSessionRequirement();
             var studentUser = CreateUser("1", UserRoleEnum.Student.ToString()); // Any authenticated user
-            var nonExistentCommentId = 999;
-            var context = new AuthorizationHandlerContext(new[] { requirement }, studentUser, nonExistentCommentId);
+            var context = new AuthorizationHandlerContext(new[] { requirement }, studentUser, null);
 
             // Act
             await handler.HandleAsync(context);
