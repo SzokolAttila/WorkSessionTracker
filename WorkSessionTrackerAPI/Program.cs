@@ -123,7 +123,6 @@ builder.Services.AddAuthentication(options =>
         };
     });
 
-builder.Services.AddAuthorization(); // Add authorization services
 builder.Services.AddAuthorization(options =>
 {
     // Simple role-based policies
