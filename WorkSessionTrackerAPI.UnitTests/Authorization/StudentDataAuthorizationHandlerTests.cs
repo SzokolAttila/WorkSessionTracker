@@ -75,15 +75,15 @@ namespace WorkSessionTrackerAPI.UnitTests.Authorization
         {
             // Arrange
             var dbContext = await GetDbContext();
-            var companyId = 2;
-            var studentId = 1;
-            dbContext.Users.Add(new Student { Id = studentId, CompanyId = companyId, Name = "s", Email = "s@s.com", UserName = "s@s.com" });
+            var company = new Company { Name = "Test Company" };
+            var student = new Student { Company = company, Name = "s", Email = "s@s.com", UserName = "s@s.com" };
+            dbContext.Add(student);
             await dbContext.SaveChangesAsync();
 
             var handler = new StudentDataAuthorizationHandler(dbContext);
             var requirement = new StudentDataRequirement();
-            var companyUser = CreateUser(companyId.ToString(), UserRoleEnum.Company.ToString());
-            var context = new AuthorizationHandlerContext(new[] { requirement }, companyUser, studentId);
+            var companyUser = CreateUser(company.Id.ToString(), UserRoleEnum.Company.ToString());
+            var context = new AuthorizationHandlerContext(new[] { requirement }, companyUser, student.Id);
 
             // Act
             await handler.HandleAsync(context);
@@ -116,16 +116,17 @@ namespace WorkSessionTrackerAPI.UnitTests.Authorization
         {
             // Arrange
             var dbContext = await GetDbContext();
-            var studentCompanyId = 1;
-            var requestingCompanyId = 2;
-            var studentId = 3;
-            dbContext.Users.Add(new Student { Id = studentId, CompanyId = studentCompanyId, Name = "s", Email = "s@s.com", UserName = "s@s.com" });
+            var studentCompany = new Company { Name = "Student's Company" };
+            var otherCompany = new Company { Name = "Other Company" };
+            var student = new Student { Company = studentCompany, Name = "s", Email = "s@s.com", UserName = "s@s.com" };
+            dbContext.Add(otherCompany);
+            dbContext.Add(student);
             await dbContext.SaveChangesAsync();
 
             var handler = new StudentDataAuthorizationHandler(dbContext);
             var requirement = new StudentDataRequirement();
-            var companyUser = CreateUser(requestingCompanyId.ToString(), UserRoleEnum.Company.ToString());
-            var context = new AuthorizationHandlerContext(new[] { requirement }, companyUser, studentId);
+            var companyUser = CreateUser(otherCompany.Id.ToString(), UserRoleEnum.Company.ToString());
+            var context = new AuthorizationHandlerContext(new[] { requirement }, companyUser, student.Id);
 
             // Act
             await handler.HandleAsync(context);
