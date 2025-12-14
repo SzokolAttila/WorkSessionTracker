@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import AppBar from '../components/AppBar';
 
 const MainLayout = () => {
+
   return (
     <div className="min-h-screen flex flex-col">
       <AppBar title="Work Session Tracker" />

@@ -14,7 +14,7 @@ const Card: React.FC<CardProps> = ({ title, description, onDelete }) => {
         <h3 className="text-lg font-bold text-white">{title}</h3>
         <button
           onClick={onDelete}
-          className="text-white border border-white rounded-lg hover:border-red-500 hover:text-red-500 focus:outline-none p-2"
+          className="text-white border border-white rounded-lg hover:border-red-500 active:border-red-500 active:text-red-500 hover:text-red-500 focus:outline-none p-2"
           aria-label={`Delete ${title}`}
         >
           <DeleteIcon fontSize="small" />
