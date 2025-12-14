@@ -1,15 +1,18 @@
+import React, { useState } from 'react';
 import Card from '../components/Card';
 import FloatingActionButton from '../components/FAB';
+import CreateWorkSessionModal from '../components/CreateWorkSessionModal';
 
 const HomePage = () => {
+    const [isModalOpen, setModalOpen] = useState(false);
+
     const handleDelete = (cardTitle: string) => {
         // In a real app, you would handle the delete logic here
         alert(`Delete action triggered for: ${cardTitle}`);
     };
 
     const handleFabClick = () => {
-        // This could open a modal or navigate to a "new item" page
-        alert('FAB clicked!');
+        setModalOpen(true);
     };
 
     return (
@@ -32,6 +35,7 @@ const HomePage = () => {
                 />
             </div>
             <FloatingActionButton onClick={handleFabClick} />
+            <CreateWorkSessionModal isOpen={isModalOpen} onClose={() => setModalOpen(false)} />
         </>
     );
 };

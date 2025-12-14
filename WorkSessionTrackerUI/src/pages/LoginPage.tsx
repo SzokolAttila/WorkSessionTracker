@@ -96,7 +96,7 @@ const LoginPage = () => {
               Log In
             </button>
             <Link to="/register" className="text-center border border-black bg-white hover:bg-gray-200 active:bg-gray-200 text-black font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors">
-              Don't have an account yet? Register
+              Don't have an account? Register
             </Link>
           </div>
         </form>
